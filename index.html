@@ -27,9 +27,13 @@
       </a>
 
       <nav class="topnav" aria-label="Main navigation">
-        <button class="nav-item is-active" type="button" data-nav="home" aria-current="page">
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m3 10 9-7 9 7v10h-6v-7H9v7H3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
-          <span>Home</span>
+        <button class="nav-item is-active" type="button" data-nav="instructions" aria-current="page">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 3h10l4 4v14H5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /><path d="M15 3v5h5M9 12h6m-6 4h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          <span>Work Instruction</span>
+        </button>
+        <button class="nav-item" type="button" data-nav="alternative">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h15m0 0-4-4m4 4-4 4M20 17H5m0 0 4-4m-4 4 4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          <span>Alternative Services Mainline</span>
         </button>
       </nav>
 
@@ -48,7 +52,7 @@
     </header>
 
     <main class="workspace" id="documents">
-      <section class="toolbar" aria-label="Document filters">
+      <section class="toolbar" id="document-toolbar" aria-label="Document filters">
         <label class="select-box collection-select" for="group-filter">
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7h7l2 2h9v11H3zM3 7V5h7l2 2" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
           <select id="group-filter" aria-label="Document group">
@@ -90,7 +94,7 @@
         </button>
       </section>
 
-      <section class="register" aria-label="OCC work instruction register">
+      <section class="register" id="document-register" aria-label="OCC work instruction register">
         <div class="table-scroll" id="table-scroll">
           <table class="document-table">
             <thead>
@@ -110,6 +114,12 @@
         <footer class="results-bar">
           <p class="results-summary" id="results-summary" aria-live="polite"></p>
         </footer>
+      </section>
+
+      <section class="alternative-placeholder" id="alternative-services" aria-label="Alternative Services Mainline" hidden>
+        <svg viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M8 15h30m0 0-8-8m8 8-8 8M40 33H10m0 0 8-8m-8 8 8 8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        <h1>Alternative Services Mainline</h1>
+        <p>Alternative service details will be added here.</p>
       </section>
     </main>
   </body>

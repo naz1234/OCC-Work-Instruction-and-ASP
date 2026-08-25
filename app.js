@@ -11,6 +11,9 @@
 
   const documents = source.documents;
   const elements = {
+    toolbar: document.getElementById("document-toolbar"),
+    register: document.getElementById("document-register"),
+    alternative: document.getElementById("alternative-services"),
     group: document.getElementById("group-filter"),
     search: document.getElementById("search-input"),
     line: document.getElementById("line-filter"),
@@ -298,7 +301,10 @@
       button.classList.add("is-active");
       button.setAttribute("aria-current", "page");
 
-      if (button.dataset.nav === "home") resetFilters();
+      const showAlternative = button.dataset.nav === "alternative";
+      elements.toolbar.hidden = showAlternative;
+      elements.register.hidden = showAlternative;
+      elements.alternative.hidden = !showAlternative;
     });
   });
 
