@@ -379,7 +379,8 @@ button {
 .toolbar[hidden],
 .register[hidden],
 .asp-section[hidden],
-.asp-modal[hidden] {
+.asp-modal[hidden],
+.link-editor-modal[hidden] {
   display: none;
 }
 
@@ -673,6 +674,149 @@ button {
   white-space: nowrap;
 }
 
+.link-editor-modal {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  padding: 20px;
+  place-items: center;
+  background: rgb(3 12 27 / 72%);
+}
+
+.link-editor-dialog {
+  width: min(560px, 100%);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 22px 70px rgb(0 0 0 / 38%);
+}
+
+.link-editor-header {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.link-editor-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.45px;
+  text-transform: uppercase;
+}
+
+.link-editor-header h2 {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-size: 19px;
+}
+
+.link-editor-close {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 27px;
+  line-height: 1;
+}
+
+.link-editor-close:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.link-editor-fields {
+  display: grid;
+  gap: 17px;
+  padding: 20px 18px 14px;
+}
+
+.link-editor-fields label {
+  display: grid;
+  gap: 7px;
+}
+
+.link-editor-fields label > span {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 640;
+}
+
+.link-editor-fields input {
+  width: 100%;
+  height: 40px;
+  padding: 0 11px;
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  outline: 0;
+  color: var(--text);
+  background: var(--surface);
+  font-size: 13px;
+}
+
+.link-editor-fields input:focus {
+  border-color: var(--blue-600);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue-600), transparent 82%);
+}
+
+.link-editor-fields small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.link-editor-status {
+  min-height: 17px;
+  margin: -3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.link-editor-status.is-error {
+  color: var(--emergency-text);
+}
+
+.link-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 13px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-subtle);
+}
+
+.link-editor-actions button {
+  min-width: 92px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 620;
+}
+
+.link-editor-cancel {
+  border: 1px solid var(--input-border);
+  color: var(--text);
+  background: var(--surface);
+}
+
+.link-editor-save {
+  border: 1px solid var(--blue-600);
+  color: #fff;
+  background: var(--blue-600);
+}
+
+.link-editor-save:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .table-scroll {
   min-height: 0;
   flex: 1;
@@ -795,6 +939,39 @@ th[data-direction="descending"] .sort-indicator {
 
 .reference-cell {
   text-align: center;
+}
+
+.reference-editor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reference-content {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link-edit-button {
+  height: 23px;
+  flex-shrink: 0;
+  padding: 0 8px;
+  border: 1px solid var(--input-border);
+  border-radius: 3px;
+  color: var(--link);
+  background: var(--surface);
+  font-size: 10.5px;
+  font-weight: 620;
+}
+
+.link-edit-button:hover,
+.link-edit-button:focus-visible {
+  border-color: var(--link);
+  background: var(--hover);
 }
 
 .reference-link {
