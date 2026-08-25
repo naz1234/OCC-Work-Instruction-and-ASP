@@ -26,7 +26,9 @@
     scroll: document.getElementById("table-scroll"),
     clear: document.getElementById("clear-filters"),
     theme: document.getElementById("theme-toggle"),
-    aspSearch: document.getElementById("asp-search-input"),
+    aspBlockageSearch: document.getElementById("asp-blockage-search"),
+    aspTurnbackSearch: document.getElementById("asp-turnback-search"),
+    aspShuttleSearch: document.getElementById("asp-shuttle-search"),
     aspRows: document.getElementById("asp-rows"),
     aspSummary: document.getElementById("asp-summary"),
     aspModal: document.getElementById("asp-modal"),
@@ -280,12 +282,22 @@
   }
 
   function renderAspPlans() {
-    const terms = elements.aspSearch.value.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    const searchTerms = (input) =>
+      input.value.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    const blockageTerms = searchTerms(elements.aspBlockageSearch);
+    const turnbackTerms = searchTerms(elements.aspTurnbackSearch);
+    const shuttleTerms = searchTerms(elements.aspShuttleSearch);
+
     const plans = aspPlans.filter((plan) => {
-      const searchable = [plan.number, plan.title, plan.detail, plan.service, plan.shuttle]
-        .join(" ")
-        .toLocaleLowerCase();
-      return terms.every((term) => searchable.includes(term));
+      const blockage = plan.detail.toLocaleLowerCase();
+      const turnback = plan.service.toLocaleLowerCase();
+      const shuttle = plan.shuttle.toLocaleLowerCase();
+
+      return (
+        blockageTerms.every((term) => blockage.includes(term)) &&
+        turnbackTerms.every((term) => turnback.includes(term)) &&
+        shuttleTerms.every((term) => shuttle.includes(term))
+      );
     });
 
     const fragment = document.createDocumentFragment();
@@ -377,7 +389,12 @@
   elements.condition.addEventListener("change", refreshResults);
   elements.folder.addEventListener("change", refreshResults);
   elements.clear.addEventListener("click", resetFilters);
-  elements.aspSearch.addEventListener("input", renderAspPlans);
+  const aspSearchInputs = [
+    elements.aspBlockageSearch,
+    elements.aspTurnbackSearch,
+    elements.aspShuttleSearch,
+  ];
+  aspSearchInputs.forEach((input) => input.addEventListener("input", renderAspPlans));
   elements.aspClose.addEventListener("click", closeAspAnimation);
   elements.aspModal.addEventListener("click", (event) => {
     if (event.target === elements.aspModal) closeAspAnimation();
@@ -465,7 +482,7 @@
     const isTyping = ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement?.tagName);
     if (event.key === "/" && !isTyping) {
       event.preventDefault();
-      (elements.alternative.hidden ? elements.search : elements.aspSearch).focus();
+      (elements.alternative.hidden ? elements.search : elements.aspBlockageSearch).focus();
     }
     if (event.key === "Escape" && document.activeElement === elements.search) {
       elements.search.value = "";
@@ -473,9 +490,9 @@
       refreshResults();
     }
 
-    if (event.key === "Escape" && document.activeElement === elements.aspSearch) {
-      elements.aspSearch.value = "";
-      elements.aspSearch.blur();
+    if (event.key === "Escape" && aspSearchInputs.includes(document.activeElement)) {
+      document.activeElement.value = "";
+      document.activeElement.blur();
       renderAspPlans();
     }
   });

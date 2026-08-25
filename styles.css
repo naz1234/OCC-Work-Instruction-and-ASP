@@ -392,7 +392,7 @@ button {
 
 .asp-toolbar {
   display: flex;
-  min-height: 73px;
+  min-height: 86px;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
@@ -411,8 +411,26 @@ button {
   font-size: 12px;
 }
 
+.asp-search-grid {
+  display: grid;
+  width: min(900px, 70%);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.asp-search-field {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 620;
+}
+
 .asp-search-box {
-  max-width: 410px;
+  width: 100%;
+  min-width: 0;
+  flex: none;
 }
 
 .asp-register {
@@ -923,6 +941,16 @@ th[data-direction="descending"] .sort-indicator {
 
   .toolbar-divider {
     display: none;
+  }
+
+  .asp-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 12px 0;
+  }
+
+  .asp-search-grid {
+    width: 100%;
   }
 }
 

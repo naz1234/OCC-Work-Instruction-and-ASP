@@ -123,10 +123,31 @@
             <h1>Alternative Services Mainline</h1>
             <p>Line 3 alternative service plans</p>
           </div>
-          <label class="search-box asp-search-box" for="asp-search-input">
-            <input id="asp-search-input" type="search" placeholder="Search ASP, station, blockage, or service..." autocomplete="off" />
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="7.2" stroke="currentColor" stroke-width="1.7" /><path d="m16 16 5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
-          </label>
+          <div class="asp-search-grid" role="search" aria-label="Alternative service plan filters">
+            <label class="asp-search-field" for="asp-blockage-search">
+              <span>Line Blockage:</span>
+              <span class="search-box asp-search-box">
+                <input id="asp-blockage-search" type="search" placeholder="Search blockage..." autocomplete="off" />
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="7.2" stroke="currentColor" stroke-width="1.7" /><path d="m16 16 5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+              </span>
+            </label>
+
+            <label class="asp-search-field" for="asp-turnback-search">
+              <span>Turnback:</span>
+              <span class="search-box asp-search-box">
+                <input id="asp-turnback-search" type="search" placeholder="Search turnback..." autocomplete="off" />
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="7.2" stroke="currentColor" stroke-width="1.7" /><path d="m16 16 5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+              </span>
+            </label>
+
+            <label class="asp-search-field" for="asp-shuttle-search">
+              <span>Shuttle:</span>
+              <span class="search-box asp-search-box">
+                <input id="asp-shuttle-search" type="search" placeholder="Search shuttle..." autocomplete="off" />
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="7.2" stroke="currentColor" stroke-width="1.7" /><path d="m16 16 5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+              </span>
+            </label>
+          </div>
         </div>
 
         <div class="asp-register">
