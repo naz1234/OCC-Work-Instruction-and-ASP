@@ -380,7 +380,8 @@ button {
 .register[hidden],
 .asp-section[hidden],
 .asp-modal[hidden],
-.link-editor-modal[hidden] {
+.link-editor-modal[hidden],
+.pdf-upload-modal[hidden] {
   display: none;
 }
 
@@ -817,6 +818,153 @@ button {
   opacity: 0.65;
 }
 
+.pdf-upload-modal {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  padding: 20px;
+  place-items: center;
+  background: rgb(3 12 27 / 72%);
+}
+
+.pdf-upload-dialog {
+  width: min(560px, 100%);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 22px 70px rgb(0 0 0 / 38%);
+}
+
+.pdf-upload-header {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pdf-upload-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.45px;
+  text-transform: uppercase;
+}
+
+.pdf-upload-header h2 {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-size: 19px;
+}
+
+.pdf-upload-close {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 27px;
+  line-height: 1;
+}
+
+.pdf-upload-close:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.pdf-upload-fields {
+  display: grid;
+  gap: 17px;
+  padding: 20px 18px 14px;
+}
+
+.pdf-upload-document {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 4px;
+  color: var(--text);
+  background: var(--surface-subtle);
+  font-size: 12px;
+  font-weight: 590;
+  line-height: 1.45;
+}
+
+.pdf-upload-fields label {
+  display: grid;
+  gap: 7px;
+}
+
+.pdf-upload-fields label > span {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 640;
+}
+
+.pdf-upload-fields input[type="file"] {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  color: var(--text);
+  background: var(--surface);
+  font-size: 12px;
+}
+
+.pdf-upload-fields small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.pdf-upload-status {
+  min-height: 17px;
+  margin: -3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.pdf-upload-status.is-error {
+  color: var(--emergency-text);
+}
+
+.pdf-upload-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 13px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-subtle);
+}
+
+.pdf-upload-actions button {
+  min-width: 92px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 620;
+}
+
+.pdf-upload-cancel {
+  border: 1px solid var(--input-border);
+  color: var(--text);
+  background: var(--surface);
+}
+
+.pdf-upload-save {
+  border: 1px solid var(--blue-600);
+  color: #fff;
+  background: var(--blue-600);
+}
+
+.pdf-upload-save:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .table-scroll {
   min-height: 0;
   flex: 1;
@@ -893,11 +1041,17 @@ th[data-direction="descending"] .sort-indicator {
 }
 
 .title-column {
-  width: 35%;
+  width: 30%;
 }
 
 .reference-column {
-  width: 24%;
+  width: 21%;
+}
+
+.wi-pdf-column {
+  width: 190px;
+  padding: 0 8px;
+  font-size: 11px;
 }
 
 .line-column {
@@ -909,7 +1063,7 @@ th[data-direction="descending"] .sort-indicator {
 }
 
 .folder-column {
-  width: 15%;
+  width: 12%;
 }
 
 .document-table td {
@@ -972,6 +1126,48 @@ th[data-direction="descending"] .sort-indicator {
 .link-edit-button:focus-visible {
   border-color: var(--link);
   background: var(--hover);
+}
+
+.wi-pdf-cell {
+  text-align: center;
+}
+
+.wi-pdf-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.wi-pdf-open,
+.wi-pdf-upload {
+  height: 23px;
+  padding: 0 7px;
+  border: 1px solid var(--input-border);
+  border-radius: 3px;
+  font-size: 10.5px;
+  font-weight: 620;
+  line-height: 21px;
+  white-space: nowrap;
+}
+
+.wi-pdf-open {
+  color: #fff;
+  background: var(--blue-600);
+  text-decoration: none;
+}
+
+.wi-pdf-upload {
+  color: var(--link);
+  background: var(--surface);
+}
+
+.wi-pdf-open:hover,
+.wi-pdf-open:focus-visible,
+.wi-pdf-upload:hover,
+.wi-pdf-upload:focus-visible {
+  border-color: var(--link);
+  filter: brightness(0.96);
 }
 
 .reference-link {
@@ -1150,7 +1346,7 @@ th[data-direction="descending"] .sort-indicator {
   }
 
   .document-table {
-    min-width: 860px;
+    min-width: 1150px;
   }
 
   .results-summary {
