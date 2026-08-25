@@ -17,17 +17,14 @@
     headerLine: document.getElementById("header-line-filter"),
     condition: document.getElementById("condition-filter"),
     folder: document.getElementById("folder-filter"),
-    pageSize: document.getElementById("page-size"),
     rows: document.getElementById("document-rows"),
     summary: document.getElementById("results-summary"),
-    pagination: document.getElementById("pagination"),
     scroll: document.getElementById("table-scroll"),
     clear: document.getElementById("clear-filters"),
     theme: document.getElementById("theme-toggle"),
   };
 
   const state = {
-    page: 1,
     sortKey: "",
     sortDirection: 1,
   };
@@ -196,71 +193,11 @@
     return row;
   }
 
-  function addPageButton(label, page, options = {}) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `page-button${options.current ? " is-current" : ""}`;
-    button.textContent = label;
-    button.disabled = Boolean(options.disabled);
-    button.setAttribute("aria-label", options.ariaLabel || `Page ${page}`);
-    if (options.current) button.setAttribute("aria-current", "page");
-    button.addEventListener("click", () => {
-      state.page = page;
-      elements.scroll.scrollTop = 0;
-      render();
-    });
-    elements.pagination.append(button);
-  }
-
-  function renderPagination(totalPages) {
-    elements.pagination.replaceChildren();
-
-    addPageButton("«", 1, { disabled: state.page === 1, ariaLabel: "First page" });
-    addPageButton("‹", Math.max(1, state.page - 1), {
-      disabled: state.page === 1,
-      ariaLabel: "Previous page",
-    });
-
-    const pageNumbers = new Set([1, totalPages]);
-    for (let number = Math.max(1, state.page - 1); number <= Math.min(totalPages, state.page + 1); number++) {
-      pageNumbers.add(number);
-    }
-    if (state.page <= 2) pageNumbers.add(Math.min(totalPages, 3));
-    if (state.page >= totalPages - 1) pageNumbers.add(Math.max(1, totalPages - 2));
-
-    let previous = 0;
-    for (const page of [...pageNumbers].sort((left, right) => left - right)) {
-      if (page - previous > 1) {
-        const ellipsis = document.createElement("span");
-        ellipsis.className = "page-ellipsis";
-        ellipsis.textContent = "…";
-        elements.pagination.append(ellipsis);
-      }
-      addPageButton(String(page), page, { current: page === state.page });
-      previous = page;
-    }
-
-    addPageButton("›", Math.min(totalPages, state.page + 1), {
-      disabled: state.page === totalPages,
-      ariaLabel: "Next page",
-    });
-    addPageButton("»", totalPages, {
-      disabled: state.page === totalPages,
-      ariaLabel: "Last page",
-    });
-  }
-
   function render() {
     const matches = filteredDocuments();
-    const pageSize = elements.pageSize.value === "all" ? Math.max(matches.length, 1) : Number(elements.pageSize.value);
-    const totalPages = Math.max(1, Math.ceil(matches.length / pageSize));
-    state.page = Math.min(state.page, totalPages);
-
-    const start = (state.page - 1) * pageSize;
-    const currentDocuments = matches.slice(start, start + pageSize);
     const fragment = document.createDocumentFragment();
 
-    if (!currentDocuments.length) {
+    if (!matches.length) {
       const row = document.createElement("tr");
       row.className = "empty-row";
       const message = createCell("No documents match your current search or filters.", "");
@@ -272,7 +209,7 @@
     let previousGroup = "";
     let previousCondition = "";
 
-    for (const document of currentDocuments) {
+    for (const document of matches) {
       if (document.group !== previousGroup) {
         fragment.append(createGroupRow(document));
         previousGroup = document.group;
@@ -289,17 +226,14 @@
 
     elements.rows.replaceChildren(fragment);
 
-    if (matches.length) {
-      elements.summary.textContent = `Showing ${start + 1} to ${Math.min(start + pageSize, matches.length)} of ${matches.length} documents`;
+    if (matches.length === documents.length) {
+      elements.summary.textContent = `Showing all ${matches.length} documents`;
     } else {
-      elements.summary.textContent = "Showing 0 of 0 documents";
+      elements.summary.textContent = `Showing ${matches.length} of ${documents.length} documents`;
     }
-
-    renderPagination(totalPages);
   }
 
-  function resetToFirstPage() {
-    state.page = 1;
+  function refreshResults() {
     elements.scroll.scrollTop = 0;
     render();
   }
@@ -317,24 +251,23 @@
       header.removeAttribute("data-direction");
       header.removeAttribute("aria-sort");
     });
-    resetToFirstPage();
+    refreshResults();
   }
 
-  elements.search.addEventListener("input", resetToFirstPage);
-  elements.group.addEventListener("change", resetToFirstPage);
-  elements.condition.addEventListener("change", resetToFirstPage);
-  elements.folder.addEventListener("change", resetToFirstPage);
-  elements.pageSize.addEventListener("change", resetToFirstPage);
+  elements.search.addEventListener("input", refreshResults);
+  elements.group.addEventListener("change", refreshResults);
+  elements.condition.addEventListener("change", refreshResults);
+  elements.folder.addEventListener("change", refreshResults);
   elements.clear.addEventListener("click", resetFilters);
 
   elements.line.addEventListener("change", () => {
     elements.headerLine.value = elements.line.value;
-    resetToFirstPage();
+    refreshResults();
   });
 
   elements.headerLine.addEventListener("change", () => {
     elements.line.value = elements.headerLine.value;
-    resetToFirstPage();
+    refreshResults();
   });
 
   document.querySelectorAll("[data-sort]").forEach((button) => {
@@ -351,7 +284,7 @@
       const direction = state.sortDirection === 1 ? "ascending" : "descending";
       button.parentElement.dataset.direction = direction;
       button.parentElement.setAttribute("aria-sort", direction);
-      resetToFirstPage();
+      refreshResults();
     });
   });
 
@@ -408,7 +341,7 @@
     if (event.key === "Escape" && document.activeElement === elements.search) {
       elements.search.value = "";
       elements.search.blur();
-      resetToFirstPage();
+      refreshResults();
     }
   });
 

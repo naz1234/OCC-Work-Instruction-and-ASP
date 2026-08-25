@@ -23,7 +23,8 @@ The register itself does not require a login. Original EDMS destinations may sti
 - Original Excel document titles, references, serial numbers, line values, EDMS folder codes, and working embedded hyperlinks.
 - Original Generic / Line 3 groups and Normal / Degraded / Emergency sections.
 - References without an Excel hyperlink remain visible as plain text.
-- Search, group filter, line filters, condition filter, exact EDMS folder filter, sorting, and pagination.
+- Search, group filter, line filters, condition filter, exact EDMS folder filter, and sorting.
+- All documents appear together in one continuous, scrollable register with no pagination.
 - Optional dark mode, saved in the visitor's browser.
 - Pure static HTML, CSS, and JavaScript that also work when `index.html` is opened directly on a computer.
 
