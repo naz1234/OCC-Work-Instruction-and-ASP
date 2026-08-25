@@ -3,10 +3,12 @@
 
   const source = window.OCC_DATA;
   const linkOverridesApi = "/api/link-overrides";
+  const wiPdfsApi = "/api/wi-pdfs";
+  const maxPdfBytes = 25 * 1024 * 1024;
 
   if (!source || !Array.isArray(source.documents)) {
     document.getElementById("document-rows").innerHTML =
-      '<tr class="empty-row"><td colspan="6">Document data could not be loaded.</td></tr>';
+      '<tr class="empty-row"><td colspan="7">Document data could not be loaded.</td></tr>';
     return;
   }
 
@@ -46,6 +48,14 @@
     linkSave: document.getElementById("link-editor-save"),
     linkCancel: document.getElementById("link-editor-cancel"),
     linkClose: document.getElementById("link-editor-close"),
+    pdfUploader: document.getElementById("pdf-upload-modal"),
+    pdfForm: document.getElementById("pdf-upload-form"),
+    pdfDocument: document.getElementById("pdf-upload-document"),
+    pdfFile: document.getElementById("pdf-file-input"),
+    pdfStatus: document.getElementById("pdf-upload-status"),
+    pdfSave: document.getElementById("pdf-upload-save"),
+    pdfCancel: document.getElementById("pdf-upload-cancel"),
+    pdfClose: document.getElementById("pdf-upload-close"),
   };
 
   const state = {
@@ -53,8 +63,11 @@
     sortDirection: 1,
     activeLinkDocument: null,
     linkEditorReturnFocus: null,
+    activePdfDocument: null,
+    pdfUploaderReturnFocus: null,
   };
   const linkOverrides = new Map();
+  const wiPdfs = new Map();
 
   const uniqueValues = (key) =>
     [...new Set(documents.map((document) => document[key]).filter(Boolean))];
@@ -181,7 +194,7 @@
     const code = String.fromCharCode(65 + groupIndex);
     const codeCell = createCell(code, "group-code");
     const labelCell = createCell(entry.group.toLocaleUpperCase(), "group-title");
-    labelCell.colSpan = 5;
+    labelCell.colSpan = 6;
 
     row.append(codeCell, labelCell);
     return row;
@@ -197,10 +210,42 @@
     const code = `${String.fromCharCode(65 + groupIndex)}.${conditionIndex + 1}`;
     const codeCell = createCell(code, "group-code");
     const labelCell = createCell(entry.condition.toLocaleUpperCase(), "condition-title");
-    labelCell.colSpan = 5;
+    labelCell.colSpan = 6;
 
     row.append(codeCell, labelCell);
     return row;
+  }
+
+  function createWiPdfCell(entry) {
+    const cell = document.createElement("td");
+    cell.className = "wi-pdf-cell";
+    const wrapper = document.createElement("div");
+    wrapper.className = "wi-pdf-actions";
+    const metadata = wiPdfs.get(documentKey(entry));
+
+    if (metadata) {
+      const open = document.createElement("a");
+      open.className = "wi-pdf-open";
+      open.href = `${wiPdfsApi}?id=${encodeURIComponent(documentKey(entry))}`;
+      open.target = "_blank";
+      open.rel = "noopener noreferrer";
+      open.textContent = "Open PDF";
+      open.title = metadata.fileName;
+      wrapper.append(open);
+    }
+
+    const upload = document.createElement("button");
+    upload.type = "button";
+    upload.className = "wi-pdf-upload";
+    upload.textContent = metadata ? "Replace" : "Upload PDF";
+    upload.setAttribute(
+      "aria-label",
+      `${metadata ? "Replace" : "Upload"} WI PDF for ${entry.reference}`,
+    );
+    upload.addEventListener("click", () => openPdfUploader(entry, upload));
+    wrapper.append(upload);
+    cell.append(wrapper);
+    return cell;
   }
 
   function createDocumentRow(entry) {
@@ -246,6 +291,7 @@
     reference.append(referenceEditor);
 
     row.append(reference);
+    row.append(createWiPdfCell(entry));
     row.append(createCell(entry.line, "line-cell"));
     row.append(
       createCell(entry.condition, `condition-cell is-${entry.condition.toLocaleLowerCase()}`),
@@ -357,6 +403,95 @@
     }
   }
 
+  function setPdfStatus(message, isError = false) {
+    elements.pdfStatus.textContent = message;
+    elements.pdfStatus.classList.toggle("is-error", isError);
+  }
+
+  function openPdfUploader(entry, returnFocus) {
+    state.activePdfDocument = entry;
+    state.pdfUploaderReturnFocus = returnFocus;
+    elements.pdfDocument.textContent = `${entry.reference} — ${entry.title}`;
+    elements.pdfForm.reset();
+    setPdfStatus("");
+    elements.pdfUploader.hidden = false;
+    elements.pdfFile.focus();
+  }
+
+  function closePdfUploader({ restoreFocus = true } = {}) {
+    elements.pdfUploader.hidden = true;
+    elements.pdfForm.reset();
+    setPdfStatus("");
+    state.activePdfDocument = null;
+    if (restoreFocus && state.pdfUploaderReturnFocus?.isConnected) {
+      state.pdfUploaderReturnFocus.focus();
+    }
+    state.pdfUploaderReturnFocus = null;
+  }
+
+  async function uploadWiPdf(event) {
+    event.preventDefault();
+    const entry = state.activePdfDocument;
+    const file = elements.pdfFile.files?.[0];
+    if (!entry || !file) {
+      setPdfStatus("Choose a PDF file.", true);
+      return;
+    }
+    if (!file.name.toLocaleLowerCase().endsWith(".pdf")) {
+      setPdfStatus("Only PDF files are allowed.", true);
+      return;
+    }
+    if (file.size > maxPdfBytes) {
+      setPdfStatus("The PDF must be 25 MB or smaller.", true);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("id", documentKey(entry));
+    formData.append("file", file);
+    elements.pdfSave.disabled = true;
+    setPdfStatus("Uploading for all devices…");
+
+    try {
+      const response = await fetch(wiPdfsApi, {
+        method: "PUT",
+        headers: { Accept: "application/json" },
+        body: formData,
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "The WI PDF could not be uploaded.");
+
+      wiPdfs.set(documentKey(entry), payload.pdf);
+      const sourceRow = entry.row;
+      closePdfUploader({ restoreFocus: false });
+      render();
+      document
+        .querySelector(`.document-row[data-source-row="${sourceRow}"] .wi-pdf-upload`)
+        ?.focus();
+    } catch (error) {
+      setPdfStatus(error.message || "The WI PDF could not be uploaded.", true);
+    } finally {
+      elements.pdfSave.disabled = false;
+    }
+  }
+
+  async function loadWiPdfs() {
+    try {
+      const response = await fetch(wiPdfsApi, {
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      if (!response.ok) return;
+      const payload = await response.json();
+      for (const pdf of payload.pdfs || []) {
+        if (pdf?.id && typeof pdf.fileName === "string") wiPdfs.set(pdf.id, pdf);
+      }
+      render();
+    } catch {
+      // The register remains usable while PDF storage is unavailable.
+    }
+  }
+
   function render() {
     const matches = filteredDocuments();
     const fragment = document.createDocumentFragment();
@@ -365,7 +500,7 @@
       const row = document.createElement("tr");
       row.className = "empty-row";
       const message = createCell("No documents match your current search or filters.", "");
-      message.colSpan = 6;
+      message.colSpan = 7;
       row.append(message);
       fragment.append(row);
     }
@@ -544,6 +679,12 @@
   elements.linkEditor.addEventListener("click", (event) => {
     if (event.target === elements.linkEditor) closeLinkEditor();
   });
+  elements.pdfForm.addEventListener("submit", uploadWiPdf);
+  elements.pdfCancel.addEventListener("click", () => closePdfUploader());
+  elements.pdfClose.addEventListener("click", () => closePdfUploader());
+  elements.pdfUploader.addEventListener("click", (event) => {
+    if (event.target === elements.pdfUploader) closePdfUploader();
+  });
   const aspSearchInputs = [
     elements.aspBlockageSearch,
     elements.aspTurnbackSearch,
@@ -629,6 +770,11 @@
   });
 
   document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !elements.pdfUploader.hidden) {
+      closePdfUploader();
+      return;
+    }
+
     if (event.key === "Escape" && !elements.linkEditor.hidden) {
       closeLinkEditor();
       return;
@@ -660,4 +806,5 @@
   render();
   renderAspPlans();
   loadLinkOverrides();
+  loadWiPdfs();
 })();
