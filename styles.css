@@ -275,6 +275,17 @@ button {
   font-size: 12px;
 }
 
+.select-box select option,
+.labeled-filter select option {
+  color: var(--text);
+  background-color: var(--surface);
+}
+
+:root[data-theme="dark"] .select-box select,
+:root[data-theme="dark"] .labeled-filter select {
+  color-scheme: dark;
+}
+
 .toolbar-divider {
   width: 1px;
   height: 34px;
