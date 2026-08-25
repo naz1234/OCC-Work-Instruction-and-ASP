@@ -103,6 +103,7 @@
                 <th class="serial-column" scope="col"><button type="button" data-sort="serial">S.No<span class="sort-indicator" aria-hidden="true"></span></button></th>
                 <th class="title-column" scope="col"><button type="button" data-sort="title">Document Title<span class="sort-indicator" aria-hidden="true"></span></button></th>
                 <th class="reference-column" scope="col"><button type="button" data-sort="reference">Reference No. / EDMS Link<span class="sort-indicator" aria-hidden="true"></span></button></th>
+                <th class="wi-pdf-column" scope="col">WI PDF (Not live from EDMS)</th>
                 <th class="line-column" scope="col"><button type="button" data-sort="line">Line<span class="sort-indicator" aria-hidden="true"></span></button></th>
                 <th class="condition-column" scope="col"><button type="button" data-sort="condition">Condition<span class="sort-indicator" aria-hidden="true"></span></button></th>
                 <th class="folder-column" scope="col"><button type="button" data-sort="folder">EDMS Folder<span class="sort-indicator" aria-hidden="true"></span></button></th>
@@ -218,6 +219,35 @@
           <footer class="link-editor-actions">
             <button class="link-editor-cancel" id="link-editor-cancel" type="button">Cancel</button>
             <button class="link-editor-save" id="link-editor-save" type="submit">Save changes</button>
+          </footer>
+        </form>
+      </div>
+    </div>
+
+    <div class="pdf-upload-modal" id="pdf-upload-modal" role="dialog" aria-modal="true" aria-labelledby="pdf-upload-title" hidden>
+      <div class="pdf-upload-dialog">
+        <header class="pdf-upload-header">
+          <div>
+            <span class="pdf-upload-label">WI PDF (Not live from EDMS)</span>
+            <h2 id="pdf-upload-title">Upload WI PDF</h2>
+          </div>
+          <button class="pdf-upload-close" id="pdf-upload-close" type="button" aria-label="Close PDF uploader">×</button>
+        </header>
+
+        <form id="pdf-upload-form">
+          <div class="pdf-upload-fields">
+            <p class="pdf-upload-document" id="pdf-upload-document"></p>
+            <label for="pdf-file-input">
+              <span>PDF file</span>
+              <input id="pdf-file-input" name="file" type="file" accept="application/pdf,.pdf" required />
+              <small>One PDF per work instruction, maximum 25 MB. Uploading again replaces the current PDF.</small>
+            </label>
+            <p class="pdf-upload-status" id="pdf-upload-status" role="status" aria-live="polite"></p>
+          </div>
+
+          <footer class="pdf-upload-actions">
+            <button class="pdf-upload-cancel" id="pdf-upload-cancel" type="button">Cancel</button>
+            <button class="pdf-upload-save" id="pdf-upload-save" type="submit">Upload PDF</button>
           </footer>
         </form>
       </div>

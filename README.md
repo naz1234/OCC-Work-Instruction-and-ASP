@@ -4,7 +4,7 @@ Line 3 OCC Work Instruction and ASP
 
 ## OCC Work Instructions
 
-A public, login-free document register for Cloudflare Pages. The main site stays framework-free and requires no build command. A Pages Function and Cloudflare D1 database store hyperlink title and URL edits so the same saved values appear on every device.
+A public, login-free document register for Cloudflare Pages. The main site stays framework-free and requires no build command. Pages Functions use Cloudflare D1 for shared metadata and R2 for uploaded WI PDF files so saved content appears on every device.
 
 ## Deploy with GitHub and Cloudflare Pages
 
@@ -19,7 +19,7 @@ A public, login-free document register for Cloudflare Pages. The main site stays
 ### Enable shared hyperlink editing
 
 1. Create a Cloudflare D1 database named `occ-work-instructions`.
-2. Apply `migrations/0001_create_link_overrides.sql` to that database. With Wrangler, run:
+2. Apply `migrations/0001_create_link_overrides.sql` in the D1 SQL Console. Alternatively, run this command from a computer terminal in the repository directory:
 
    ```bash
    npx wrangler@latest d1 migrations apply occ-work-instructions --remote
@@ -30,6 +30,16 @@ A public, login-free document register for Cloudflare Pages. The main site stays
 5. Redeploy the Pages project so the binding takes effect.
 
 The editor intentionally has no PIN or login. Anyone who can open the site can update a reference title or URL. Use Cloudflare's site access controls when edit access must be restricted to a group.
+
+### Enable shared WI PDF uploads
+
+1. Apply `migrations/0002_create_wi_pdfs.sql` to the same `occ-work-instructions` D1 database.
+2. Create a private Cloudflare R2 bucket named `occ-wi-pdfs`.
+3. Open the Pages project and add an **R2 bucket binding** with variable name `WI_PDFS`, selecting the `occ-wi-pdfs` bucket.
+4. Add the binding to Production. Repeat for Preview only when PR preview deployments must support PDF uploads.
+5. Redeploy the Pages project so the new Function and binding take effect.
+
+Each work instruction supports one PDF of up to 25 MB. Uploading another PDF for the same work instruction replaces the existing file. The uploader has no PIN or login, matching the hyperlink editor.
 
 The register itself does not require a login. Original EDMS destinations may still ask for organization credentials because their access is controlled by EDMS, not this website.
 
@@ -42,6 +52,8 @@ The register itself does not require a login. Original EDMS destinations may sti
 - All documents appear together in one continuous, scrollable register with no pagination.
 - PIN-free Edit button for adding or updating each reference hyperlink and its displayed title.
 - Hyperlink edits are stored in Cloudflare D1 and loaded on every device.
+- **WI PDF (Not live from EDMS)** column with Upload PDF, Open PDF, and Replace actions.
+- WI PDFs are stored privately in Cloudflare R2 with shared metadata in D1.
 - 22 Alternative Services Mainline plans with station-level blockage, turnback, and shuttle details.
 - Separate targeted search fields for line blockage, turnback, and shuttle details.
 - Clickable lightweight ASP thumbnails that open the complete original animated GIF without loading every animation upfront.
