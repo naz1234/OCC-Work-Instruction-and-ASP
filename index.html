@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#071a3c" />
+    <meta
+      name="description"
+      content="Search and browse OCC work instructions and their original EDMS document links."
+    />
+    <title>OCC Work Instructions</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="data.js" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#documents" aria-label="OCC Work Instructions home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none">
+            <rect x="5" y="4" width="22" height="25" rx="2" stroke="currentColor" stroke-width="1.7" />
+            <path d="M10 9v15m5-13h7m-7 5h7m-7 5h7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+          </svg>
+        </span>
+        <span class="brand-copy">
+          <strong>OCC Work Instructions</strong>
+          <span>Operations Control Centre</span>
+        </span>
+      </a>
+
+      <nav class="topnav" aria-label="Main navigation">
+        <button class="nav-item" type="button" data-nav="home">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m3 10 9-7 9 7v10h-6v-7H9v7H3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
+          <span>Home</span>
+        </button>
+        <button class="nav-item is-active" type="button" data-nav="documents" aria-current="page">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 6h7l2 2h9v12H3zM3 6V4h7l2 2" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
+          <span>Documents</span>
+        </button>
+        <button class="nav-item" type="button" data-nav="categories">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.7" /><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.7" /><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.7" /><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.7" /></svg>
+          <span>Categories</span>
+        </button>
+        <button class="nav-item" type="button" data-nav="search">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="7.2" stroke="currentColor" stroke-width="1.7" /><path d="m16 16 5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+          <span>Search</span>
+        </button>
+      </nav>
+
+      <div class="topbar-actions">
+        <label class="header-select" for="header-line-filter">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /></svg>
+          <select id="header-line-filter" aria-label="Filter documents by line">
+            <option value="">All Lines</option>
+          </select>
+        </label>
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">
+          <svg class="sun-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8" /><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+          <svg class="moon-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20.6 14.4A8.5 8.5 0 0 1 9.6 3.4 8.5 8.5 0 1 0 20.6 14.4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="workspace" id="documents">
+      <section class="toolbar" aria-label="Document filters">
+        <label class="select-box collection-select" for="group-filter">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7h7l2 2h9v11H3zM3 7V5h7l2 2" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /></svg>
+          <select id="group-filter" aria-label="Document group">
+            <option value="">All Documents</option>
+          </select>
+        </label>
+
+        <div class="toolbar-divider" aria-hidden="true"></div>
+
+        <label class="search-box" for="search-input">
+          <input id="search-input" type="search" placeholder="Search document title, reference no., keywords..." autocomplete="off" />
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="7.2" stroke="currentColor" stroke-width="1.7" /><path d="m16 16 5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+        </label>
+
+        <label class="labeled-filter" for="line-filter">
+          <span>Line:</span>
+          <select id="line-filter">
+            <option value="">All Lines</option>
+          </select>
+        </label>
+
+        <label class="labeled-filter" for="condition-filter">
+          <span>Condition:</span>
+          <select id="condition-filter">
+            <option value="">All Conditions</option>
+          </select>
+        </label>
+
+        <label class="labeled-filter folder-filter" for="folder-filter">
+          <span>EDMS Folder:</span>
+          <select id="folder-filter">
+            <option value="">All Folders</option>
+          </select>
+        </label>
+
+        <button class="clear-button" id="clear-filters" type="button">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /><path d="M5.8 8.4A7 7 0 0 1 18 7l2 2m-16 6 2 2a7 7 0 0 0 12.2-1.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+          <span>Clear Filters</span>
+        </button>
+      </section>
+
+      <section class="register" aria-label="OCC work instruction register">
+        <div class="table-scroll" id="table-scroll">
+          <table class="document-table">
+            <thead>
+              <tr>
+                <th class="serial-column" scope="col"><button type="button" data-sort="serial">S.No<span class="sort-indicator" aria-hidden="true"></span></button></th>
+                <th class="title-column" scope="col"><button type="button" data-sort="title">Document Title<span class="sort-indicator" aria-hidden="true"></span></button></th>
+                <th class="reference-column" scope="col"><button type="button" data-sort="reference">Reference No. / EDMS Link<span class="sort-indicator" aria-hidden="true"></span></button></th>
+                <th class="line-column" scope="col"><button type="button" data-sort="line">Line<span class="sort-indicator" aria-hidden="true"></span></button></th>
+                <th class="condition-column" scope="col"><button type="button" data-sort="condition">Condition<span class="sort-indicator" aria-hidden="true"></span></button></th>
+                <th class="folder-column" scope="col"><button type="button" data-sort="folder">EDMS Folder<span class="sort-indicator" aria-hidden="true"></span></button></th>
+              </tr>
+            </thead>
+            <tbody id="document-rows"></tbody>
+          </table>
+        </div>
+
+        <footer class="pagination-bar">
+          <p class="results-summary" id="results-summary" aria-live="polite"></p>
+          <nav class="pagination" id="pagination" aria-label="Document pages"></nav>
+          <label class="rows-setting" for="page-size">
+            <span>Rows per page:</span>
+            <select id="page-size">
+              <option value="25">25</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+              <option value="all">All</option>
+            </select>
+          </label>
+        </footer>
+      </section>
+    </main>
+  </body>
+</html>

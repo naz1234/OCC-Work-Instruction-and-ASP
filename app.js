@@ -1,0 +1,416 @@
+(() => {
+  "use strict";
+
+  const source = window.OCC_DATA;
+
+  if (!source || !Array.isArray(source.documents)) {
+    document.getElementById("document-rows").innerHTML =
+      '<tr class="empty-row"><td colspan="6">Document data could not be loaded.</td></tr>';
+    return;
+  }
+
+  const documents = source.documents;
+  const elements = {
+    group: document.getElementById("group-filter"),
+    search: document.getElementById("search-input"),
+    line: document.getElementById("line-filter"),
+    headerLine: document.getElementById("header-line-filter"),
+    condition: document.getElementById("condition-filter"),
+    folder: document.getElementById("folder-filter"),
+    pageSize: document.getElementById("page-size"),
+    rows: document.getElementById("document-rows"),
+    summary: document.getElementById("results-summary"),
+    pagination: document.getElementById("pagination"),
+    scroll: document.getElementById("table-scroll"),
+    clear: document.getElementById("clear-filters"),
+    theme: document.getElementById("theme-toggle"),
+  };
+
+  const state = {
+    page: 1,
+    sortKey: "",
+    sortDirection: 1,
+  };
+
+  const uniqueValues = (key) =>
+    [...new Set(documents.map((document) => document[key]).filter(Boolean))];
+
+  function addOptions(select, values, formatter = (value) => value) {
+    for (const value of values) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = formatter(value);
+      select.append(option);
+    }
+  }
+
+  const lines = [
+    ...new Set(
+      documents.flatMap((document) =>
+        document.line
+          .split(",")
+          .map((line) => line.trim())
+          .filter(Boolean),
+      ),
+    ),
+  ].sort((left, right) => left.localeCompare(right, undefined, { numeric: true }));
+
+  addOptions(elements.group, uniqueValues("group"));
+  addOptions(elements.line, lines, (line) => `Line ${line}`);
+  addOptions(elements.headerLine, lines, (line) => `Line ${line}`);
+  addOptions(elements.condition, uniqueValues("condition"));
+  addOptions(elements.folder, uniqueValues("folder").sort());
+
+  function lineMatches(document, selectedLine) {
+    if (!selectedLine) return true;
+    return document.line
+      .split(",")
+      .map((line) => line.trim())
+      .includes(selectedLine);
+  }
+
+  function filteredDocuments() {
+    const searchTerms = elements.search.value.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+
+    let filtered = documents.filter((document) => {
+      if (elements.group.value && document.group !== elements.group.value) return false;
+      if (elements.condition.value && document.condition !== elements.condition.value) return false;
+      if (elements.folder.value && document.folder !== elements.folder.value) return false;
+      if (!lineMatches(document, elements.line.value)) return false;
+
+      if (searchTerms.length) {
+        const searchable = [
+          document.serial,
+          document.title,
+          document.reference,
+          document.line,
+          document.folder,
+          document.condition,
+          document.group,
+        ]
+          .join(" ")
+          .toLocaleLowerCase();
+
+        if (!searchTerms.every((term) => searchable.includes(term))) return false;
+      }
+
+      return true;
+    });
+
+    if (state.sortKey) {
+      const groupOrder = uniqueValues("group");
+      const conditionOrder = uniqueValues("condition");
+
+      filtered = [...filtered].sort((left, right) => {
+        const groupDifference = groupOrder.indexOf(left.group) - groupOrder.indexOf(right.group);
+        if (groupDifference) return groupDifference;
+
+        const conditionDifference =
+          conditionOrder.indexOf(left.condition) - conditionOrder.indexOf(right.condition);
+        if (conditionDifference) return conditionDifference;
+
+        const comparison = String(left[state.sortKey]).localeCompare(String(right[state.sortKey]), undefined, {
+          numeric: true,
+          sensitivity: "base",
+        });
+
+        return comparison * state.sortDirection || left.row - right.row;
+      });
+    }
+
+    return filtered;
+  }
+
+  function createCell(text, className, title = "") {
+    const cell = document.createElement("td");
+    cell.className = className;
+    cell.textContent = text;
+    if (title) cell.title = title;
+    return cell;
+  }
+
+  function createGroupRow(entry) {
+    const row = document.createElement("tr");
+    row.className = "group-row";
+
+    const groupIndex = uniqueValues("group").indexOf(entry.group);
+    const code = String.fromCharCode(65 + groupIndex);
+    const codeCell = createCell(code, "group-code");
+    const labelCell = createCell(entry.group.toLocaleUpperCase(), "group-title");
+    labelCell.colSpan = 5;
+
+    row.append(codeCell, labelCell);
+    return row;
+  }
+
+  function createConditionRow(entry) {
+    const row = document.createElement("tr");
+    const conditionClass = entry.condition.toLocaleLowerCase();
+    row.className = `condition-row is-${conditionClass}`;
+
+    const groupIndex = uniqueValues("group").indexOf(entry.group);
+    const conditionIndex = uniqueValues("condition").indexOf(entry.condition);
+    const code = `${String.fromCharCode(65 + groupIndex)}.${conditionIndex + 1}`;
+    const codeCell = createCell(code, "group-code");
+    const labelCell = createCell(entry.condition.toLocaleUpperCase(), "condition-title");
+    labelCell.colSpan = 5;
+
+    row.append(codeCell, labelCell);
+    return row;
+  }
+
+  function createDocumentRow(entry) {
+    const row = document.createElement("tr");
+    row.className = "document-row";
+    row.dataset.sourceRow = String(entry.row);
+
+    row.append(createCell(entry.serial, "serial-cell"));
+    row.append(createCell(entry.title, "title-cell", entry.title));
+
+    const reference = document.createElement("td");
+    reference.className = "reference-cell";
+
+    if (entry.url && /^https?:\/\//i.test(entry.url)) {
+      const link = document.createElement("a");
+      link.className = "reference-link";
+      link.href = entry.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = entry.reference;
+      link.title = `Open ${entry.reference} in EDMS`;
+      reference.append(link);
+    } else {
+      const plainReference = document.createElement("span");
+      plainReference.className = "reference-without-link";
+      plainReference.textContent = entry.reference;
+      plainReference.title = "No hyperlink exists for this reference in the original Excel file.";
+      reference.append(plainReference);
+    }
+
+    row.append(reference);
+    row.append(createCell(entry.line, "line-cell"));
+    row.append(
+      createCell(entry.condition, `condition-cell is-${entry.condition.toLocaleLowerCase()}`),
+    );
+    row.append(createCell(entry.folder, "folder-cell", entry.folder));
+    return row;
+  }
+
+  function addPageButton(label, page, options = {}) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `page-button${options.current ? " is-current" : ""}`;
+    button.textContent = label;
+    button.disabled = Boolean(options.disabled);
+    button.setAttribute("aria-label", options.ariaLabel || `Page ${page}`);
+    if (options.current) button.setAttribute("aria-current", "page");
+    button.addEventListener("click", () => {
+      state.page = page;
+      elements.scroll.scrollTop = 0;
+      render();
+    });
+    elements.pagination.append(button);
+  }
+
+  function renderPagination(totalPages) {
+    elements.pagination.replaceChildren();
+
+    addPageButton("«", 1, { disabled: state.page === 1, ariaLabel: "First page" });
+    addPageButton("‹", Math.max(1, state.page - 1), {
+      disabled: state.page === 1,
+      ariaLabel: "Previous page",
+    });
+
+    const pageNumbers = new Set([1, totalPages]);
+    for (let number = Math.max(1, state.page - 1); number <= Math.min(totalPages, state.page + 1); number++) {
+      pageNumbers.add(number);
+    }
+    if (state.page <= 2) pageNumbers.add(Math.min(totalPages, 3));
+    if (state.page >= totalPages - 1) pageNumbers.add(Math.max(1, totalPages - 2));
+
+    let previous = 0;
+    for (const page of [...pageNumbers].sort((left, right) => left - right)) {
+      if (page - previous > 1) {
+        const ellipsis = document.createElement("span");
+        ellipsis.className = "page-ellipsis";
+        ellipsis.textContent = "…";
+        elements.pagination.append(ellipsis);
+      }
+      addPageButton(String(page), page, { current: page === state.page });
+      previous = page;
+    }
+
+    addPageButton("›", Math.min(totalPages, state.page + 1), {
+      disabled: state.page === totalPages,
+      ariaLabel: "Next page",
+    });
+    addPageButton("»", totalPages, {
+      disabled: state.page === totalPages,
+      ariaLabel: "Last page",
+    });
+  }
+
+  function render() {
+    const matches = filteredDocuments();
+    const pageSize = elements.pageSize.value === "all" ? Math.max(matches.length, 1) : Number(elements.pageSize.value);
+    const totalPages = Math.max(1, Math.ceil(matches.length / pageSize));
+    state.page = Math.min(state.page, totalPages);
+
+    const start = (state.page - 1) * pageSize;
+    const currentDocuments = matches.slice(start, start + pageSize);
+    const fragment = document.createDocumentFragment();
+
+    if (!currentDocuments.length) {
+      const row = document.createElement("tr");
+      row.className = "empty-row";
+      const message = createCell("No documents match your current search or filters.", "");
+      message.colSpan = 6;
+      row.append(message);
+      fragment.append(row);
+    }
+
+    let previousGroup = "";
+    let previousCondition = "";
+
+    for (const document of currentDocuments) {
+      if (document.group !== previousGroup) {
+        fragment.append(createGroupRow(document));
+        previousGroup = document.group;
+        previousCondition = "";
+      }
+
+      if (document.condition !== previousCondition) {
+        fragment.append(createConditionRow(document));
+        previousCondition = document.condition;
+      }
+
+      fragment.append(createDocumentRow(document));
+    }
+
+    elements.rows.replaceChildren(fragment);
+
+    if (matches.length) {
+      elements.summary.textContent = `Showing ${start + 1} to ${Math.min(start + pageSize, matches.length)} of ${matches.length} documents`;
+    } else {
+      elements.summary.textContent = "Showing 0 of 0 documents";
+    }
+
+    renderPagination(totalPages);
+  }
+
+  function resetToFirstPage() {
+    state.page = 1;
+    elements.scroll.scrollTop = 0;
+    render();
+  }
+
+  function resetFilters() {
+    elements.group.value = "";
+    elements.search.value = "";
+    elements.line.value = "";
+    elements.headerLine.value = "";
+    elements.condition.value = "";
+    elements.folder.value = "";
+    state.sortKey = "";
+    state.sortDirection = 1;
+    document.querySelectorAll(".document-table th").forEach((header) => {
+      header.removeAttribute("data-direction");
+      header.removeAttribute("aria-sort");
+    });
+    resetToFirstPage();
+  }
+
+  elements.search.addEventListener("input", resetToFirstPage);
+  elements.group.addEventListener("change", resetToFirstPage);
+  elements.condition.addEventListener("change", resetToFirstPage);
+  elements.folder.addEventListener("change", resetToFirstPage);
+  elements.pageSize.addEventListener("change", resetToFirstPage);
+  elements.clear.addEventListener("click", resetFilters);
+
+  elements.line.addEventListener("change", () => {
+    elements.headerLine.value = elements.line.value;
+    resetToFirstPage();
+  });
+
+  elements.headerLine.addEventListener("change", () => {
+    elements.line.value = elements.headerLine.value;
+    resetToFirstPage();
+  });
+
+  document.querySelectorAll("[data-sort]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const key = button.dataset.sort;
+      state.sortDirection = state.sortKey === key ? state.sortDirection * -1 : 1;
+      state.sortKey = key;
+
+      document.querySelectorAll(".document-table th").forEach((header) => {
+        header.removeAttribute("data-direction");
+        header.removeAttribute("aria-sort");
+      });
+
+      const direction = state.sortDirection === 1 ? "ascending" : "descending";
+      button.parentElement.dataset.direction = direction;
+      button.parentElement.setAttribute("aria-sort", direction);
+      resetToFirstPage();
+    });
+  });
+
+  document.querySelectorAll("[data-nav]").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelectorAll("[data-nav]").forEach((item) => {
+        item.classList.remove("is-active");
+        item.removeAttribute("aria-current");
+      });
+
+      button.classList.add("is-active");
+      button.setAttribute("aria-current", "page");
+
+      if (button.dataset.nav === "home") resetFilters();
+      if (button.dataset.nav === "search") elements.search.focus();
+      if (button.dataset.nav === "categories") elements.folder.focus();
+    });
+  });
+
+  function applyTheme(theme) {
+    if (theme === "dark") {
+      document.documentElement.dataset.theme = "dark";
+      elements.theme.setAttribute("aria-label", "Switch to light mode");
+      elements.theme.title = "Switch to light mode";
+    } else {
+      delete document.documentElement.dataset.theme;
+      elements.theme.setAttribute("aria-label", "Switch to dark mode");
+      elements.theme.title = "Switch to dark mode";
+    }
+  }
+
+  try {
+    applyTheme(localStorage.getItem("occ-work-instructions-theme") || "light");
+  } catch {
+    applyTheme("light");
+  }
+
+  elements.theme.addEventListener("click", () => {
+    const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    applyTheme(nextTheme);
+    try {
+      localStorage.setItem("occ-work-instructions-theme", nextTheme);
+    } catch {
+      // The selected theme still works when browser storage is unavailable.
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    const isTyping = ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement?.tagName);
+    if (event.key === "/" && !isTyping) {
+      event.preventDefault();
+      elements.search.focus();
+    }
+    if (event.key === "Escape" && document.activeElement === elements.search) {
+      elements.search.value = "";
+      elements.search.blur();
+      resetToFirstPage();
+    }
+  });
+
+  render();
+})();
