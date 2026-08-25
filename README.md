@@ -4,7 +4,7 @@ Line 3 OCC Work Instruction and ASP
 
 ## OCC Work Instructions
 
-A public, login-free document register ready to deploy as a static website on Cloudflare Pages. It has no framework, build command, server, database, or account requirement.
+A public, login-free document register for Cloudflare Pages. The main site stays framework-free and requires no build command. A Pages Function and Cloudflare D1 database store hyperlink title and URL edits so the same saved values appear on every device.
 
 ## Deploy with GitHub and Cloudflare Pages
 
@@ -16,6 +16,21 @@ A public, login-free document register ready to deploy as a static website on Cl
 6. Leave **Build command** empty and use `/` as the **Build output directory**.
 7. Select **Save and Deploy**.
 
+### Enable shared hyperlink editing
+
+1. Create a Cloudflare D1 database named `occ-work-instructions`.
+2. Apply `migrations/0001_create_link_overrides.sql` to that database. With Wrangler, run:
+
+   ```bash
+   npx wrangler@latest d1 migrations apply occ-work-instructions --remote
+   ```
+
+3. Open the Pages project and add a **D1 database binding** with variable name `OCC_LINKS`, selecting the `occ-work-instructions` database.
+4. Add the same binding to both Production and Preview when PR previews must support editing.
+5. Redeploy the Pages project so the binding takes effect.
+
+The editor intentionally has no PIN or login. Anyone who can open the site can update a reference title or URL. Use Cloudflare's site access controls when edit access must be restricted to a group.
+
 The register itself does not require a login. Original EDMS destinations may still ask for organization credentials because their access is controlled by EDMS, not this website.
 
 ## Included features
@@ -25,11 +40,13 @@ The register itself does not require a login. Original EDMS destinations may sti
 - References without an Excel hyperlink remain visible as plain text.
 - Search, group filter, line filters, condition filter, exact EDMS folder filter, and sorting.
 - All documents appear together in one continuous, scrollable register with no pagination.
+- PIN-free Edit button for adding or updating each reference hyperlink and its displayed title.
+- Hyperlink edits are stored in Cloudflare D1 and loaded on every device.
 - 22 Alternative Services Mainline plans with station-level blockage, turnback, and shuttle details.
 - Separate targeted search fields for line blockage, turnback, and shuttle details.
 - Clickable lightweight ASP thumbnails that open the complete original animated GIF without loading every animation upfront.
 - Optional dark mode, saved in the visitor's browser.
-- Pure static HTML, CSS, and JavaScript that also work when `index.html` is opened directly on a computer.
+- Framework-free HTML, CSS, and JavaScript. The register remains readable when `index.html` is opened directly, while shared editing requires the deployed Cloudflare Pages Function.
 
 ## Updating the register from another Excel workbook
 
