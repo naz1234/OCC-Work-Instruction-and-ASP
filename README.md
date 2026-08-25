@@ -25,6 +25,8 @@ The register itself does not require a login. Original EDMS destinations may sti
 - References without an Excel hyperlink remain visible as plain text.
 - Search, group filter, line filters, condition filter, exact EDMS folder filter, and sorting.
 - All documents appear together in one continuous, scrollable register with no pagination.
+- 22 Alternative Services Mainline plans with station-level blockage, turnback, and shuttle details.
+- Clickable lightweight ASP thumbnails that open the complete original animated GIF without loading every animation upfront.
 - Optional dark mode, saved in the visitor's browser.
 - Pure static HTML, CSS, and JavaScript that also work when `index.html` is opened directly on a computer.
 

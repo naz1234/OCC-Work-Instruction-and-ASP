@@ -378,39 +378,281 @@ button {
 
 .toolbar[hidden],
 .register[hidden],
-.alternative-placeholder[hidden] {
+.asp-section[hidden],
+.asp-modal[hidden] {
   display: none;
 }
 
-.alternative-placeholder {
+.asp-section {
   display: flex;
+  min-height: 0;
   flex: 1;
   flex-direction: column;
+}
+
+.asp-toolbar {
+  display: flex;
+  min-height: 73px;
   align-items: center;
-  justify-content: center;
-  margin-top: 20px;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.asp-heading h1 {
+  margin: 0 0 3px;
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 650;
+}
+
+.asp-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.asp-search-box {
+  max-width: 410px;
+}
+
+.asp-register {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
   border: 1px solid var(--border);
   background: var(--surface);
+}
+
+.asp-table {
+  width: 100%;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+.asp-table thead {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+}
+
+.asp-table th {
+  height: 36px;
+  padding: 0 16px;
+  border-right: 1px solid #30415e;
+  color: #f8faff;
+  background: linear-gradient(180deg, #102448, var(--navy-900));
+  font-size: 12px;
+  font-weight: 620;
+  text-align: left;
+}
+
+.asp-table th:last-child {
+  border-right: 0;
   text-align: center;
 }
 
-.alternative-placeholder svg {
-  width: 54px;
-  height: 54px;
-  color: var(--blue-600);
+.asp-name-column {
+  width: 31%;
 }
 
-.alternative-placeholder h1 {
-  margin: 18px 0 8px;
-  color: var(--text);
-  font-size: 21px;
-  font-weight: 640;
+.asp-detail-column {
+  width: 51%;
 }
 
-.alternative-placeholder p {
+.asp-image-column {
+  width: 18%;
+}
+
+.asp-row td {
+  padding: 9px 16px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.asp-row td:last-child {
+  border-right: 0;
+}
+
+.asp-row:hover td {
+  background: var(--hover);
+}
+
+.asp-title-button {
+  padding: 0;
+  border: 0;
+  color: var(--link);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 580;
+  text-align: left;
+}
+
+.asp-title-button:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.asp-detail-main {
   margin: 0;
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 560;
+  line-height: 1.5;
+}
+
+.asp-detail-service,
+.asp-detail-shuttle {
+  margin: 3px 0 0;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.asp-detail-service strong,
+.asp-detail-shuttle strong {
+  color: var(--text);
+  font-weight: 580;
+}
+
+.asp-preview-cell {
+  text-align: center;
+}
+
+.asp-preview-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--link);
+  background: var(--surface);
+}
+
+.asp-preview-button:hover {
+  border-color: var(--link);
+}
+
+.asp-preview-button img {
+  display: block;
+  width: 92px;
+  height: 52px;
+  border-radius: 2px;
+  background: #fff;
+  object-fit: contain;
+}
+
+.asp-preview-button span {
+  font-size: 11px;
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+.asp-empty-row td {
+  height: 130px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.asp-modal {
+  position: fixed;
+  z-index: 10;
+  inset: 0;
+  display: grid;
+  padding: 24px;
+  place-items: center;
+  background: rgb(3 12 27 / 78%);
+}
+
+.asp-dialog {
+  display: flex;
+  width: min(1450px, 100%);
+  max-height: calc(100vh - 48px);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: 0 22px 70px rgb(0 0 0 / 40%);
+}
+
+.asp-dialog-header {
+  display: flex;
+  min-height: 75px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.asp-dialog-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 550;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.asp-dialog-header h2 {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-size: 18px;
+}
+
+.asp-close {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 27px;
+  line-height: 1;
+}
+
+.asp-close:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.asp-animation-frame {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  place-items: center;
+  background: #fff;
+}
+
+.asp-animation-frame img {
+  display: block;
+  width: 100%;
+  max-height: calc(100vh - 210px);
+  object-fit: contain;
+}
+
+.asp-dialog-footer {
+  display: flex;
+  min-height: 54px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 11px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.asp-dialog-footer p {
+  margin: 0;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.asp-dialog-footer a {
+  color: var(--link);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .table-scroll {

@@ -12,6 +12,7 @@
     <link rel="icon" type="image/png" href="favicon.png" />
     <link rel="stylesheet" href="styles.css" />
     <script src="data.js" defer></script>
+    <script src="asp-data.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
@@ -116,11 +117,55 @@
         </footer>
       </section>
 
-      <section class="alternative-placeholder" id="alternative-services" aria-label="Alternative Services Mainline" hidden>
-        <svg viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M8 15h30m0 0-8-8m8 8-8 8M40 33H10m0 0 8-8m-8 8 8 8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
-        <h1>Alternative Services Mainline</h1>
-        <p>Alternative service details will be added here.</p>
+      <section class="asp-section" id="alternative-services" aria-label="Alternative Services Mainline" hidden>
+        <div class="asp-toolbar">
+          <div class="asp-heading">
+            <h1>Alternative Services Mainline</h1>
+            <p>Line 3 alternative service plans</p>
+          </div>
+          <label class="search-box asp-search-box" for="asp-search-input">
+            <input id="asp-search-input" type="search" placeholder="Search ASP, station, blockage, or service..." autocomplete="off" />
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="7.2" stroke="currentColor" stroke-width="1.7" /><path d="m16 16 5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+          </label>
+        </div>
+
+        <div class="asp-register">
+          <div class="table-scroll asp-table-scroll">
+            <table class="asp-table">
+              <thead>
+                <tr>
+                  <th class="asp-name-column" scope="col">ASP</th>
+                  <th class="asp-detail-column" scope="col">Detail</th>
+                  <th class="asp-image-column" scope="col">Image</th>
+                </tr>
+              </thead>
+              <tbody id="asp-rows"></tbody>
+            </table>
+          </div>
+          <footer class="results-bar">
+            <p class="results-summary" id="asp-summary" aria-live="polite"></p>
+          </footer>
+        </div>
       </section>
     </main>
+
+    <div class="asp-modal" id="asp-modal" role="dialog" aria-modal="true" aria-labelledby="asp-modal-title" hidden>
+      <div class="asp-dialog">
+        <header class="asp-dialog-header">
+          <div>
+            <span class="asp-dialog-label">Alternative Service Plan</span>
+            <h2 id="asp-modal-title"></h2>
+          </div>
+          <button class="asp-close" id="asp-modal-close" type="button" aria-label="Close animation">×</button>
+        </header>
+        <div class="asp-animation-frame">
+          <img id="asp-animation" alt="" />
+        </div>
+        <footer class="asp-dialog-footer">
+          <p id="asp-modal-detail"></p>
+          <a id="asp-open-original" href="#" target="_blank" rel="noopener noreferrer">Open original GIF ↗</a>
+        </footer>
+      </div>
+    </div>
   </body>
 </html>

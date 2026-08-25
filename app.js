@@ -10,6 +10,7 @@
   }
 
   const documents = source.documents;
+  const aspPlans = Array.isArray(window.ASP_DATA) ? window.ASP_DATA : [];
   const elements = {
     toolbar: document.getElementById("document-toolbar"),
     register: document.getElementById("document-register"),
@@ -25,6 +26,15 @@
     scroll: document.getElementById("table-scroll"),
     clear: document.getElementById("clear-filters"),
     theme: document.getElementById("theme-toggle"),
+    aspSearch: document.getElementById("asp-search-input"),
+    aspRows: document.getElementById("asp-rows"),
+    aspSummary: document.getElementById("asp-summary"),
+    aspModal: document.getElementById("asp-modal"),
+    aspModalTitle: document.getElementById("asp-modal-title"),
+    aspModalDetail: document.getElementById("asp-modal-detail"),
+    aspAnimation: document.getElementById("asp-animation"),
+    aspClose: document.getElementById("asp-modal-close"),
+    aspOriginal: document.getElementById("asp-open-original"),
   };
 
   const state = {
@@ -241,6 +251,111 @@
     render();
   }
 
+  function createAspDetailLine(label, value, className) {
+    const line = document.createElement("p");
+    line.className = className;
+
+    const heading = document.createElement("strong");
+    heading.textContent = `${label}: `;
+    const content = document.createElement("span");
+    content.textContent = value;
+
+    line.append(heading, content);
+    return line;
+  }
+
+  function openAspAnimation(plan) {
+    elements.aspModalTitle.textContent = plan.title;
+    elements.aspModalDetail.textContent = plan.detail;
+    elements.aspAnimation.src = plan.animation;
+    elements.aspAnimation.alt = `${plan.title} animated train service diagram`;
+    elements.aspOriginal.href = plan.animation;
+    elements.aspModal.hidden = false;
+    elements.aspClose.focus();
+  }
+
+  function closeAspAnimation() {
+    elements.aspModal.hidden = true;
+    elements.aspAnimation.removeAttribute("src");
+  }
+
+  function renderAspPlans() {
+    const terms = elements.aspSearch.value.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    const plans = aspPlans.filter((plan) => {
+      const searchable = [plan.number, plan.title, plan.detail, plan.service, plan.shuttle]
+        .join(" ")
+        .toLocaleLowerCase();
+      return terms.every((term) => searchable.includes(term));
+    });
+
+    const fragment = document.createDocumentFragment();
+
+    if (!plans.length) {
+      const empty = document.createElement("tr");
+      empty.className = "asp-empty-row";
+      const message = document.createElement("td");
+      message.colSpan = 3;
+      message.textContent = "No alternative service plans match your search.";
+      empty.append(message);
+      fragment.append(empty);
+    }
+
+    for (const plan of plans) {
+      const row = document.createElement("tr");
+      row.className = "asp-row";
+      row.dataset.asp = plan.number;
+
+      const nameCell = document.createElement("td");
+      const title = document.createElement("button");
+      title.type = "button";
+      title.className = "asp-title-button";
+      title.textContent = plan.title;
+      title.addEventListener("click", () => openAspAnimation(plan));
+      nameCell.append(title);
+
+      const detailCell = document.createElement("td");
+      const description = document.createElement("p");
+      description.className = "asp-detail-main";
+      description.textContent = plan.detail;
+      detailCell.append(description);
+      if (plan.service) {
+        detailCell.append(createAspDetailLine("Turnback", plan.service, "asp-detail-service"));
+      }
+      if (plan.shuttle) {
+        detailCell.append(createAspDetailLine("Shuttle", plan.shuttle, "asp-detail-shuttle"));
+      }
+
+      const imageCell = document.createElement("td");
+      imageCell.className = "asp-preview-cell";
+      const preview = document.createElement("button");
+      preview.type = "button";
+      preview.className = "asp-preview-button";
+      preview.setAttribute("aria-label", `Open ${plan.title} animation`);
+
+      const image = document.createElement("img");
+      image.src = plan.thumbnail;
+      image.alt = `${plan.title} diagram preview`;
+      image.loading = "lazy";
+      image.decoding = "async";
+
+      const label = document.createElement("span");
+      label.textContent = "View GIF";
+
+      preview.append(image, label);
+      preview.addEventListener("click", () => openAspAnimation(plan));
+      imageCell.append(preview);
+
+      row.append(nameCell, detailCell, imageCell);
+      fragment.append(row);
+    }
+
+    elements.aspRows.replaceChildren(fragment);
+    elements.aspSummary.textContent =
+      plans.length === aspPlans.length
+        ? `Showing all ${plans.length} alternative service plans`
+        : `Showing ${plans.length} of ${aspPlans.length} alternative service plans`;
+  }
+
   function resetFilters() {
     elements.group.value = "";
     elements.search.value = "";
@@ -262,6 +377,11 @@
   elements.condition.addEventListener("change", refreshResults);
   elements.folder.addEventListener("change", refreshResults);
   elements.clear.addEventListener("click", resetFilters);
+  elements.aspSearch.addEventListener("input", renderAspPlans);
+  elements.aspClose.addEventListener("click", closeAspAnimation);
+  elements.aspModal.addEventListener("click", (event) => {
+    if (event.target === elements.aspModal) closeAspAnimation();
+  });
 
   elements.line.addEventListener("change", () => {
     elements.headerLine.value = elements.line.value;
@@ -337,17 +457,29 @@
   });
 
   document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !elements.aspModal.hidden) {
+      closeAspAnimation();
+      return;
+    }
+
     const isTyping = ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement?.tagName);
     if (event.key === "/" && !isTyping) {
       event.preventDefault();
-      elements.search.focus();
+      (elements.alternative.hidden ? elements.search : elements.aspSearch).focus();
     }
     if (event.key === "Escape" && document.activeElement === elements.search) {
       elements.search.value = "";
       elements.search.blur();
       refreshResults();
     }
+
+    if (event.key === "Escape" && document.activeElement === elements.aspSearch) {
+      elements.aspSearch.value = "";
+      elements.aspSearch.blur();
+      renderAspPlans();
+    }
   });
 
   render();
+  renderAspPlans();
 })();
