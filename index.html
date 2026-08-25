@@ -188,5 +188,39 @@
         </footer>
       </div>
     </div>
+
+    <div class="link-editor-modal" id="link-editor-modal" role="dialog" aria-modal="true" aria-labelledby="link-editor-title" hidden>
+      <div class="link-editor-dialog">
+        <header class="link-editor-header">
+          <div>
+            <span class="link-editor-label">Reference No. / EDMS Link</span>
+            <h2 id="link-editor-title">Edit hyperlink</h2>
+          </div>
+          <button class="link-editor-close" id="link-editor-close" type="button" aria-label="Close hyperlink editor">×</button>
+        </header>
+
+        <form id="link-editor-form">
+          <div class="link-editor-fields">
+            <label for="link-title-input">
+              <span>Hyperlink title</span>
+              <input id="link-title-input" name="title" type="text" maxlength="200" required autocomplete="off" />
+            </label>
+
+            <label for="link-url-input">
+              <span>Hyperlink URL</span>
+              <input id="link-url-input" name="url" type="url" maxlength="2048" inputmode="url" placeholder="https://..." autocomplete="off" />
+              <small>Use an http:// or https:// address. Leave blank to remove the hyperlink.</small>
+            </label>
+
+            <p class="link-editor-status" id="link-editor-status" role="status" aria-live="polite"></p>
+          </div>
+
+          <footer class="link-editor-actions">
+            <button class="link-editor-cancel" id="link-editor-cancel" type="button">Cancel</button>
+            <button class="link-editor-save" id="link-editor-save" type="submit">Save changes</button>
+          </footer>
+        </form>
+      </div>
+    </div>
   </body>
 </html>

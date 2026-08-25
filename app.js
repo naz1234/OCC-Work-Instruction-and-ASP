@@ -2,6 +2,7 @@
   "use strict";
 
   const source = window.OCC_DATA;
+  const linkOverridesApi = "/api/link-overrides";
 
   if (!source || !Array.isArray(source.documents)) {
     document.getElementById("document-rows").innerHTML =
@@ -37,15 +38,42 @@
     aspAnimation: document.getElementById("asp-animation"),
     aspClose: document.getElementById("asp-modal-close"),
     aspOriginal: document.getElementById("asp-open-original"),
+    linkEditor: document.getElementById("link-editor-modal"),
+    linkForm: document.getElementById("link-editor-form"),
+    linkTitle: document.getElementById("link-title-input"),
+    linkUrl: document.getElementById("link-url-input"),
+    linkStatus: document.getElementById("link-editor-status"),
+    linkSave: document.getElementById("link-editor-save"),
+    linkCancel: document.getElementById("link-editor-cancel"),
+    linkClose: document.getElementById("link-editor-close"),
   };
 
   const state = {
     sortKey: "",
     sortDirection: 1,
+    activeLinkDocument: null,
+    linkEditorReturnFocus: null,
   };
+  const linkOverrides = new Map();
 
   const uniqueValues = (key) =>
     [...new Set(documents.map((document) => document[key]).filter(Boolean))];
+
+  const documentKey = (entry) => {
+    const referenceKey = entry.reference
+      .toLocaleLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return referenceKey ? `reference-${referenceKey}` : `row-${entry.row}`;
+  };
+
+  function effectiveLink(entry) {
+    const override = linkOverrides.get(documentKey(entry));
+    return {
+      title: override?.title ?? entry.reference,
+      url: override?.url ?? entry.url,
+    };
+  }
 
   function addOptions(select, values, formatter = (value) => value) {
     for (const value of values) {
@@ -91,10 +119,12 @@
       if (!lineMatches(document, elements.line.value)) return false;
 
       if (searchTerms.length) {
+        const currentLink = effectiveLink(document);
         const searchable = [
           document.serial,
           document.title,
           document.reference,
+          currentLink.title,
           document.line,
           document.folder,
           document.condition,
@@ -121,7 +151,9 @@
           conditionOrder.indexOf(left.condition) - conditionOrder.indexOf(right.condition);
         if (conditionDifference) return conditionDifference;
 
-        const comparison = String(left[state.sortKey]).localeCompare(String(right[state.sortKey]), undefined, {
+        const leftValue = state.sortKey === "reference" ? effectiveLink(left).title : left[state.sortKey];
+        const rightValue = state.sortKey === "reference" ? effectiveLink(right).title : right[state.sortKey];
+        const comparison = String(leftValue).localeCompare(String(rightValue), undefined, {
           numeric: true,
           sensitivity: "base",
         });
@@ -181,23 +213,37 @@
 
     const reference = document.createElement("td");
     reference.className = "reference-cell";
+    const referenceEditor = document.createElement("div");
+    referenceEditor.className = "reference-editor";
+    const referenceContent = document.createElement("div");
+    referenceContent.className = "reference-content";
+    const currentLink = effectiveLink(entry);
 
-    if (entry.url && /^https?:\/\//i.test(entry.url)) {
+    if (currentLink.url && /^https?:\/\//i.test(currentLink.url)) {
       const link = document.createElement("a");
       link.className = "reference-link";
-      link.href = entry.url;
+      link.href = currentLink.url;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
-      link.textContent = entry.reference;
-      link.title = `Open ${entry.reference} in EDMS`;
-      reference.append(link);
+      link.textContent = currentLink.title;
+      link.title = `Open ${currentLink.title}`;
+      referenceContent.append(link);
     } else {
       const plainReference = document.createElement("span");
       plainReference.className = "reference-without-link";
-      plainReference.textContent = entry.reference;
-      plainReference.title = "No hyperlink exists for this reference in the original Excel file.";
-      reference.append(plainReference);
+      plainReference.textContent = currentLink.title;
+      plainReference.title = "No hyperlink is currently assigned to this reference.";
+      referenceContent.append(plainReference);
     }
+
+    const editLink = document.createElement("button");
+    editLink.type = "button";
+    editLink.className = "link-edit-button";
+    editLink.textContent = "Edit";
+    editLink.setAttribute("aria-label", `Edit hyperlink for ${currentLink.title}`);
+    editLink.addEventListener("click", () => openLinkEditor(entry, editLink));
+    referenceEditor.append(referenceContent, editLink);
+    reference.append(referenceEditor);
 
     row.append(reference);
     row.append(createCell(entry.line, "line-cell"));
@@ -206,6 +252,109 @@
     );
     row.append(createCell(entry.folder, "folder-cell", entry.folder));
     return row;
+  }
+
+  function setLinkStatus(message, isError = false) {
+    elements.linkStatus.textContent = message;
+    elements.linkStatus.classList.toggle("is-error", isError);
+  }
+
+  function openLinkEditor(entry, returnFocus) {
+    const currentLink = effectiveLink(entry);
+    state.activeLinkDocument = entry;
+    state.linkEditorReturnFocus = returnFocus;
+    elements.linkTitle.value = currentLink.title;
+    elements.linkUrl.value = currentLink.url;
+    setLinkStatus("");
+    elements.linkEditor.hidden = false;
+    elements.linkTitle.focus();
+    elements.linkTitle.select();
+  }
+
+  function closeLinkEditor({ restoreFocus = true } = {}) {
+    elements.linkEditor.hidden = true;
+    elements.linkForm.reset();
+    setLinkStatus("");
+    state.activeLinkDocument = null;
+    if (restoreFocus && state.linkEditorReturnFocus?.isConnected) {
+      state.linkEditorReturnFocus.focus();
+    }
+    state.linkEditorReturnFocus = null;
+  }
+
+  function validHttpUrl(value) {
+    if (!value) return true;
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }
+
+  async function saveLinkOverride(event) {
+    event.preventDefault();
+    const entry = state.activeLinkDocument;
+    if (!entry) return;
+
+    const title = elements.linkTitle.value.trim();
+    const url = elements.linkUrl.value.trim();
+    if (!title) {
+      setLinkStatus("Enter a hyperlink title.", true);
+      elements.linkTitle.focus();
+      return;
+    }
+    if (!validHttpUrl(url)) {
+      setLinkStatus("Enter a complete http:// or https:// URL.", true);
+      elements.linkUrl.focus();
+      return;
+    }
+
+    elements.linkSave.disabled = true;
+    setLinkStatus("Saving for all devices…");
+
+    try {
+      const response = await fetch(linkOverridesApi, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ id: documentKey(entry), title, url }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || "The shared link could not be saved.");
+      }
+
+      linkOverrides.set(documentKey(entry), payload.override);
+      const sourceRow = entry.row;
+      closeLinkEditor({ restoreFocus: false });
+      render();
+      document
+        .querySelector(`.document-row[data-source-row="${sourceRow}"] .link-edit-button`)
+        ?.focus();
+    } catch (error) {
+      setLinkStatus(error.message || "The shared link could not be saved.", true);
+    } finally {
+      elements.linkSave.disabled = false;
+    }
+  }
+
+  async function loadLinkOverrides() {
+    try {
+      const response = await fetch(linkOverridesApi, {
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      if (!response.ok) return;
+      const payload = await response.json();
+      for (const override of payload.overrides || []) {
+        if (override?.id && typeof override.title === "string" && typeof override.url === "string") {
+          linkOverrides.set(override.id, override);
+        }
+      }
+      render();
+    } catch {
+      // The original static register remains usable while shared storage is unavailable.
+    }
   }
 
   function render() {
@@ -389,6 +538,12 @@
   elements.condition.addEventListener("change", refreshResults);
   elements.folder.addEventListener("change", refreshResults);
   elements.clear.addEventListener("click", resetFilters);
+  elements.linkForm.addEventListener("submit", saveLinkOverride);
+  elements.linkCancel.addEventListener("click", () => closeLinkEditor());
+  elements.linkClose.addEventListener("click", () => closeLinkEditor());
+  elements.linkEditor.addEventListener("click", (event) => {
+    if (event.target === elements.linkEditor) closeLinkEditor();
+  });
   const aspSearchInputs = [
     elements.aspBlockageSearch,
     elements.aspTurnbackSearch,
@@ -474,6 +629,11 @@
   });
 
   document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !elements.linkEditor.hidden) {
+      closeLinkEditor();
+      return;
+    }
+
     if (event.key === "Escape" && !elements.aspModal.hidden) {
       closeAspAnimation();
       return;
@@ -499,4 +659,5 @@
 
   render();
   renderAspPlans();
+  loadLinkOverrides();
 })();
