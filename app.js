@@ -299,8 +299,6 @@
       button.setAttribute("aria-current", "page");
 
       if (button.dataset.nav === "home") resetFilters();
-      if (button.dataset.nav === "search") elements.search.focus();
-      if (button.dataset.nav === "categories") elements.folder.focus();
     });
   });
 
