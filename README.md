@@ -41,7 +41,7 @@ Each work instruction supports one PDF of up to 25 MB. Uploading another PDF for
 
 ### Enable password-protected edit mode
 
-1. Apply `migrations/0003_create_document_editor.sql` to the same `occ-work-instructions` D1 database.
+1. Apply `migrations/0003_create_document_editor.sql` and `migrations/0004_create_document_overrides.sql` to the same `occ-work-instructions` D1 database.
 2. In the Pages project, open **Settings** → **Variables and Secrets** for Production.
 3. Add an encrypted secret named `EDIT_PASSWORD` and set its value to the required edit-mode password.
 4. Repeat for Preview if PR preview deployments must support edit mode.
@@ -59,6 +59,7 @@ The register itself does not require a login. Original EDMS destinations may sti
 - Search, group filter, line filters, condition filter, exact EDMS folder filter, and sorting.
 - All documents appear together in one continuous, scrollable register with no pagination.
 - Password-protected edit mode for adding and removing work instructions.
+- Per-row editing for Lines 3–6 and Normal / Degraded / Emergency conditions, saved in D1 for every device.
 - Section-level **Add** buttons create an inline WI row with inherited group, condition, line, and folder values, avoiding the full add form.
 - Edit controls for adding or updating each reference hyperlink and its displayed title.
 - Hyperlink edits are stored in Cloudflare D1 and loaded on every device.

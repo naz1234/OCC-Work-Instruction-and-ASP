@@ -1006,6 +1006,90 @@ button {
   font-size: 11px;
 }
 
+.assignment-editor-fields {
+  display: grid;
+  gap: 17px;
+  padding: 20px 18px 14px;
+}
+
+.assignment-editor-document {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assignment-editor-fields fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+}
+
+.assignment-editor-fields legend,
+.assignment-condition-field > span {
+  padding: 0 4px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 640;
+}
+
+.assignment-line-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.assignment-line-options label {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  background: var(--surface-subtle);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.assignment-line-options label:has(input:checked) {
+  border-color: var(--blue-600);
+  color: var(--link);
+  background: color-mix(in srgb, var(--blue-600), transparent 91%);
+}
+
+.assignment-line-options input {
+  accent-color: var(--blue-600);
+}
+
+.assignment-condition-field {
+  display: grid;
+  gap: 7px;
+}
+
+.assignment-condition-field select {
+  width: 100%;
+  height: 40px;
+  padding: 0 11px;
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  outline: 0;
+  color: var(--text);
+  background: var(--surface);
+  font-size: 13px;
+}
+
+.assignment-condition-field select:focus {
+  border-color: var(--blue-600);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue-600), transparent 82%);
+}
+
 .link-editor-status {
   min-height: 17px;
   margin: -3px 0 0;
@@ -1523,6 +1607,37 @@ th[data-direction="descending"] .sort-indicator {
 .condition-cell.is-emergency {
   color: var(--emergency-text);
   font-weight: 560;
+}
+
+.assignment-entry {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.assignment-entry > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.assignment-edit-button {
+  height: 23px;
+  flex-shrink: 0;
+  padding: 0 8px;
+  border: 1px solid var(--input-border);
+  border-radius: 3px;
+  color: var(--link);
+  background: var(--surface);
+  font-size: 10.5px;
+  font-weight: 620;
+}
+
+.assignment-edit-button:hover,
+.assignment-edit-button:focus-visible {
+  border-color: var(--link);
+  background: var(--hover);
 }
 
 .group-row td,
