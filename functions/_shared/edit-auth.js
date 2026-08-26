@@ -1,4 +1,4 @@
-const cookieName = "occ_edit_session";
+const cookieName = "occ_edit_session"; 
 const sessionLifetimeSeconds = 8 * 60 * 60;
 
 function configuredPassword(env) {
