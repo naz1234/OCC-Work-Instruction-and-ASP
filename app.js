@@ -52,6 +52,7 @@
     pdfForm: document.getElementById("pdf-upload-form"),
     pdfDocument: document.getElementById("pdf-upload-document"),
     pdfFile: document.getElementById("pdf-file-input"),
+    pdfFileName: document.getElementById("pdf-file-name"),
     pdfStatus: document.getElementById("pdf-upload-status"),
     pdfSave: document.getElementById("pdf-upload-save"),
     pdfCancel: document.getElementById("pdf-upload-cancel"),
@@ -408,11 +409,18 @@
     elements.pdfStatus.classList.toggle("is-error", isError);
   }
 
+  function updatePdfFileName() {
+    const file = elements.pdfFile.files?.[0];
+    elements.pdfFileName.textContent = file?.name || "No file selected";
+    elements.pdfFileName.title = file?.name || "";
+  }
+
   function openPdfUploader(entry, returnFocus) {
     state.activePdfDocument = entry;
     state.pdfUploaderReturnFocus = returnFocus;
     elements.pdfDocument.textContent = `${entry.reference} — ${entry.title}`;
     elements.pdfForm.reset();
+    updatePdfFileName();
     setPdfStatus("");
     elements.pdfUploader.hidden = false;
     elements.pdfFile.focus();
@@ -421,6 +429,7 @@
   function closePdfUploader({ restoreFocus = true } = {}) {
     elements.pdfUploader.hidden = true;
     elements.pdfForm.reset();
+    updatePdfFileName();
     setPdfStatus("");
     state.activePdfDocument = null;
     if (restoreFocus && state.pdfUploaderReturnFocus?.isConnected) {
@@ -680,6 +689,7 @@
     if (event.target === elements.linkEditor) closeLinkEditor();
   });
   elements.pdfForm.addEventListener("submit", uploadWiPdf);
+  elements.pdfFile.addEventListener("change", updatePdfFileName);
   elements.pdfCancel.addEventListener("click", () => closePdfUploader());
   elements.pdfClose.addEventListener("click", () => closePdfUploader());
   elements.pdfUploader.addEventListener("click", (event) => {
