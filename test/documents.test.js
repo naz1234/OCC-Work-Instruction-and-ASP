@@ -6,6 +6,7 @@ import {
   onRequest,
   validateDocument,
   validateDocumentAssignment,
+  validateDocumentRename,
 } from "../functions/api/documents.js";
 
 const editPassword = "test-edit-password";
@@ -16,6 +17,7 @@ class FakeDatabase {
     this.removed = new Map();
     this.pdfs = new Map();
     this.assignments = new Map();
+    this.textOverrides = new Map();
   }
 
   prepare(sql) {
@@ -40,6 +42,9 @@ class FakeDatabase {
         }
         if (sql.includes("FROM document_overrides")) {
           return { results: [...database.assignments.values()].sort((a, b) => a.id.localeCompare(b.id)) };
+        }
+        if (sql.includes("FROM document_text_overrides")) {
+          return { results: [...database.textOverrides.values()].sort((a, b) => a.id.localeCompare(b.id)) };
         }
         return { results: [] };
       },
@@ -70,10 +75,17 @@ class FakeDatabase {
         } else if (sql.includes("INSERT INTO document_overrides")) {
           const [id, line, condition, updatedAt] = this.values;
           database.assignments.set(id, { id, line, condition, updatedAt });
+        } else if (sql.includes("INSERT INTO document_text_overrides")) {
+          const [id, value, updatedAt] = this.values;
+          const current = database.textOverrides.get(id) || { id, title: null, folder: null };
+          const field = sql.includes("document_key, title") ? "title" : "folder";
+          database.textOverrides.set(id, { ...current, [field]: value, updatedAt });
         } else if (sql.includes("DELETE FROM wi_pdfs")) {
           database.pdfs.delete(this.values[0]);
         } else if (sql.includes("DELETE FROM document_overrides")) {
           database.assignments.delete(this.values[0]);
+        } else if (sql.includes("DELETE FROM document_text_overrides")) {
+          database.textOverrides.delete(this.values[0]);
         }
         return { success: true };
       },
@@ -124,6 +136,21 @@ test("validates and normalizes editable lines and conditions", () => {
   );
 });
 
+test("validates document title and EDMS folder renames", () => {
+  assert.deepEqual(
+    validateDocumentRename({ id: "row-7", field: "title", value: "  Updated title  " }).value,
+    { id: "row-7", field: "title", value: "Updated title" },
+  );
+  assert.match(
+    validateDocumentRename({ id: "row-7", field: "folder", value: "" }).error,
+    /EDMS folder/,
+  );
+  assert.match(
+    validateDocumentRename({ id: "row-7", field: "reference", value: "Test" }).error,
+    /valid field/,
+  );
+});
+
 test("adds, lists, and removes a custom work instruction", async () => {
   const database = new FakeDatabase();
   const add = await onRequest({
@@ -158,6 +185,18 @@ test("adds, lists, and removes a custom work instruction", async () => {
 
 test("records a removed built-in work instruction for every device", async () => {
   const database = new FakeDatabase();
+  database.assignments.set("row-7", {
+    id: "row-7",
+    line: "3",
+    condition: "Normal",
+    updatedAt: new Date().toISOString(),
+  });
+  database.textOverrides.set("row-7", {
+    id: "row-7",
+    title: "Renamed title",
+    folder: "OCC",
+    updatedAt: new Date().toISOString(),
+  });
   const response = await onRequest({
     env: { OCC_LINKS: database, EDIT_PASSWORD: editPassword },
     request: await authorizedRequest("https://example.com/api/documents?id=row-7", {
@@ -166,6 +205,8 @@ test("records a removed built-in work instruction for every device", async () =>
   });
   assert.equal(response.status, 200);
   assert.equal(database.removed.has("row-7"), true);
+  assert.equal(database.assignments.has("row-7"), false);
+  assert.equal(database.textOverrides.has("row-7"), false);
 });
 
 test("updates and lists a built-in work instruction line and condition", async () => {
@@ -189,6 +230,33 @@ test("updates and lists a built-in work instruction line and condition", async (
   assert.equal(payload.assignmentOverrides[0].condition, "Degraded");
 });
 
+test("renames and lists a document title and EDMS folder", async () => {
+  const database = new FakeDatabase();
+  for (const [field, value] of [
+    ["title", "Updated OCC Work Instruction"],
+    ["folder", "STA"],
+  ]) {
+    const update = await onRequest({
+      env: { OCC_LINKS: database, EDIT_PASSWORD: editPassword },
+      request: await authorizedRequest("https://example.com/api/documents", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "rename", id: "row-7", field, value }),
+      }),
+    });
+    assert.equal(update.status, 200);
+    assert.equal((await update.json()).override[field], value);
+  }
+
+  const list = await onRequest({
+    env: { OCC_LINKS: database, EDIT_PASSWORD: editPassword },
+    request: new Request("https://example.com/api/documents"),
+  });
+  const payload = await list.json();
+  assert.equal(payload.textOverrides[0].title, "Updated OCC Work Instruction");
+  assert.equal(payload.textOverrides[0].folder, "STA");
+});
+
 test("rejects document changes outside edit mode", async () => {
   const response = await onRequest({
     env: { OCC_LINKS: new FakeDatabase(), EDIT_PASSWORD: editPassword },
@@ -210,4 +278,14 @@ test("rejects document changes outside edit mode", async () => {
     }),
   });
   assert.equal(assignmentResponse.status, 401);
+
+  const renameResponse = await onRequest({
+    env: { OCC_LINKS: new FakeDatabase(), EDIT_PASSWORD: editPassword },
+    request: new Request("https://example.com/api/documents", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "rename", id: "row-7", field: "title", value: "Test" }),
+    }),
+  });
+  assert.equal(renameResponse.status, 401);
 });

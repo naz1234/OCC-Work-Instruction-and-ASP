@@ -88,6 +88,29 @@ function validateDocumentAssignment(input) {
   return { value: { id, line: lines.join(","), condition } };
 }
 
+function validateDocumentRename(input) {
+  const id = cleanText(input?.id);
+  const field = cleanText(input?.field);
+  const value = cleanText(input?.value);
+
+  if (!validDocumentId(id)) return { error: "The document identifier is invalid." };
+  if (!["title", "folder"].includes(field)) return { error: "Choose a valid field to rename." };
+  if (!value) {
+    return { error: field === "title" ? "Enter the document title." : "Enter the EDMS folder." };
+  }
+  const maximum = field === "title" ? 300 : 80;
+  if (value.length > maximum) {
+    return {
+      error:
+        field === "title"
+          ? "The document title must be 300 characters or fewer."
+          : "The EDMS folder must be 80 characters or fewer.",
+    };
+  }
+
+  return { value: { id, field, value } };
+}
+
 async function ensureDocumentOverridesTable(database) {
   await database
     .prepare(
@@ -95,6 +118,19 @@ async function ensureDocumentOverridesTable(database) {
          document_key TEXT PRIMARY KEY,
          line TEXT NOT NULL,
          condition TEXT NOT NULL,
+         updated_at TEXT NOT NULL
+       )`,
+    )
+    .run();
+}
+
+async function ensureDocumentTextOverridesTable(database) {
+  await database
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS document_text_overrides (
+         document_key TEXT PRIMARY KEY,
+         title TEXT,
+         folder TEXT,
          updated_at TEXT NOT NULL
        )`,
     )
@@ -142,10 +178,26 @@ async function listDocumentChanges(database) {
   } catch {
     // Existing deployments remain readable until the new table is created by migration or first edit.
   }
+  let textResult = { results: [] };
+  try {
+    textResult = await database
+      .prepare(
+        `SELECT document_key AS id,
+                title,
+                folder,
+                updated_at AS updatedAt
+           FROM document_text_overrides
+          ORDER BY document_key`,
+      )
+      .all();
+  } catch {
+    // Existing deployments remain readable until the new table is created by migration or first rename.
+  }
   return {
     documents: customResult.results || [],
     removedIds: (removedResult.results || []).map((row) => row.id),
     assignmentOverrides: assignmentResult.results || [],
+    textOverrides: textResult.results || [],
   };
 }
 
@@ -206,6 +258,33 @@ async function updateDocumentAssignment(database, input) {
   return { override };
 }
 
+async function renameDocumentField(database, input) {
+  const validation = validateDocumentRename(input);
+  if (validation.error) return { error: validation.error, status: 400 };
+
+  const { id, field, value } = validation.value;
+  const updatedAt = new Date().toISOString();
+  try {
+    await ensureDocumentTextOverridesTable(database);
+    await database
+      .prepare(
+        `INSERT INTO document_text_overrides (document_key, ${field}, updated_at)
+         VALUES (?, ?, ?)
+         ON CONFLICT(document_key) DO UPDATE SET
+           ${field} = excluded.${field},
+           updated_at = excluded.updated_at`,
+      )
+      .bind(id, value, updatedAt)
+      .run();
+  } catch {
+    return {
+      error: field === "title" ? "The document title could not be saved." : "The EDMS folder could not be saved.",
+      status: 500,
+    };
+  }
+  return { override: { id, [field]: value, updatedAt } };
+}
+
 async function removeDocument(database, bucket, id) {
   if (!validDocumentId(id)) {
     return { error: "The document identifier is invalid.", status: 400 };
@@ -221,6 +300,7 @@ async function removeDocument(database, bucket, id) {
 
   try {
     await ensureDocumentOverridesTable(database);
+    await ensureDocumentTextOverridesTable(database);
   } catch {
     return { error: "The work instruction could not be removed.", status: 500 };
   }
@@ -243,6 +323,7 @@ async function removeDocument(database, bucket, id) {
     database.prepare("DELETE FROM link_overrides WHERE document_key = ?").bind(id),
     database.prepare("DELETE FROM wi_pdfs WHERE document_key = ?").bind(id),
     database.prepare("DELETE FROM document_overrides WHERE document_key = ?").bind(id),
+    database.prepare("DELETE FROM document_text_overrides WHERE document_key = ?").bind(id),
   );
 
   try {
@@ -294,7 +375,10 @@ export async function onRequest(context) {
     } catch {
       return json({ error: "The request must contain valid JSON." }, 400);
     }
-    const result = await updateDocumentAssignment(database, input);
+    const result =
+      input?.action === "rename"
+        ? await renameDocumentField(database, input)
+        : await updateDocumentAssignment(database, input);
     return result.error ? json({ error: result.error }, result.status) : json(result);
   }
 
@@ -313,4 +397,9 @@ export async function onRequest(context) {
   return json({ error: "Method not allowed." }, 405);
 }
 
-export { validDocumentId, validateDocument, validateDocumentAssignment };
+export {
+  validDocumentId,
+  validateDocument,
+  validateDocumentAssignment,
+  validateDocumentRename,
+};

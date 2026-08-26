@@ -359,6 +359,35 @@
       </div>
     </div>
 
+    <div class="link-editor-modal rename-editor-modal" id="rename-editor-modal" role="dialog" aria-modal="true" aria-labelledby="rename-editor-title" hidden>
+      <div class="link-editor-dialog">
+        <header class="link-editor-header">
+          <div>
+            <span class="link-editor-label">Work instruction details</span>
+            <h2 id="rename-editor-title">Rename</h2>
+          </div>
+          <button class="link-editor-close" id="rename-editor-close" type="button" aria-label="Close rename editor">×</button>
+        </header>
+
+        <form id="rename-editor-form">
+          <div class="link-editor-fields">
+            <p class="rename-editor-document" id="rename-editor-document"></p>
+            <label for="rename-value-input">
+              <span id="rename-value-label">New name</span>
+              <input id="rename-value-input" name="value" type="text" required autocomplete="off" />
+              <small>The new value will be saved for all devices.</small>
+            </label>
+            <p class="link-editor-status" id="rename-editor-status" role="status" aria-live="polite"></p>
+          </div>
+
+          <footer class="link-editor-actions">
+            <button class="link-editor-cancel" id="rename-editor-cancel" type="button">Cancel</button>
+            <button class="link-editor-save" id="rename-editor-save" type="submit">Save changes</button>
+          </footer>
+        </form>
+      </div>
+    </div>
+
     <div class="pdf-upload-modal" id="pdf-upload-modal" role="dialog" aria-modal="true" aria-labelledby="pdf-upload-title" hidden>
       <div class="pdf-upload-dialog">
         <header class="pdf-upload-header">
