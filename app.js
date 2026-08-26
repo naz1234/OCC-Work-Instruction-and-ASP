@@ -94,6 +94,7 @@
     activePdfDocument: null,
     pdfUploaderReturnFocus: null,
     isEditing: false,
+    quickAdd: null,
   };
   const linkOverrides = new Map();
   const wiPdfs = new Map();
@@ -261,10 +262,178 @@
     const conditionIndex = uniqueValues("condition").indexOf(entry.condition);
     const code = `${String.fromCharCode(65 + groupIndex)}.${conditionIndex + 1}`;
     const codeCell = createCell(code, "group-code");
-    const labelCell = createCell(entry.condition.toLocaleUpperCase(), "condition-title");
-    labelCell.colSpan = 6;
+    const labelCell = document.createElement("td");
+    labelCell.className = "condition-title";
+    const heading = document.createElement("div");
+    heading.className = "condition-heading";
+    const label = document.createElement("span");
+    label.textContent = entry.condition.toLocaleUpperCase();
+    heading.append(label);
+    if (state.isEditing) {
+      const add = document.createElement("button");
+      add.type = "button";
+      add.className = "quick-add-button";
+      add.textContent = "Add";
+      add.dataset.sectionKey = sectionKey(entry.group, entry.condition);
+      add.setAttribute(
+        "aria-label",
+        `Quick add a work instruction to ${entry.condition} in ${entry.group}`,
+      );
+      add.addEventListener("click", () => startQuickAdd(entry));
+      heading.append(add);
+    }
+    labelCell.append(heading);
+    const remainingCells = document.createElement("td");
+    remainingCells.className = "condition-spacer";
+    remainingCells.colSpan = 5;
 
-    row.append(codeCell, labelCell);
+    row.append(codeCell, labelCell, remainingCells);
+    return row;
+  }
+
+  function sectionKey(group, condition) {
+    return `${encodeURIComponent(group)}::${encodeURIComponent(condition)}`;
+  }
+
+  function startQuickAdd(entry) {
+    if (!state.isEditing) return;
+    state.quickAdd = {
+      group: entry.group,
+      condition: entry.condition,
+      line: elements.line.value || entry.line || "3,4,5,6",
+      folder: elements.folder.value || entry.folder || "OCC",
+    };
+    render();
+    elements.rows.querySelector(".quick-add-title")?.focus();
+  }
+
+  function cancelQuickAdd() {
+    const draft = state.quickAdd;
+    state.quickAdd = null;
+    render();
+    if (draft) {
+      elements.rows
+        .querySelector(
+          `.quick-add-button[data-section-key="${CSS.escape(sectionKey(draft.group, draft.condition))}"]`,
+        )
+        ?.focus();
+    }
+  }
+
+  async function saveQuickAdd(titleInput, referenceInput, saveButton) {
+    const draft = state.quickAdd;
+    if (!draft || !state.isEditing) return;
+    const title = titleInput.value.trim();
+    const reference = referenceInput.value.trim();
+
+    titleInput.setCustomValidity(title ? "" : "Enter the document title.");
+    referenceInput.setCustomValidity(reference ? "" : "Enter the reference number.");
+    if (!titleInput.reportValidity() || !referenceInput.reportValidity()) return;
+    if (
+      documents.some(
+        (document) => document.reference.toLocaleLowerCase() === reference.toLocaleLowerCase(),
+      )
+    ) {
+      referenceInput.setCustomValidity("That reference number already exists.");
+      referenceInput.reportValidity();
+      return;
+    }
+
+    saveButton.disabled = true;
+    saveButton.textContent = "Saving…";
+    try {
+      const response = await fetch(documentsApi, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          title,
+          reference,
+          line: draft.line,
+          condition: draft.condition,
+          folder: draft.folder,
+          group: draft.group,
+          linkTitle: reference,
+          url: "",
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (response.status === 401) setEditMode(false);
+        throw new Error(payload.error || "The work instruction could not be added.");
+      }
+
+      const addedId = payload.document?.id;
+      state.quickAdd = null;
+      await loadDocumentChanges();
+      document
+        .querySelector(
+          `.document-row[data-document-key="${CSS.escape(addedId || "")}"] .remove-wi-button`,
+        )
+        ?.focus();
+    } catch (error) {
+      if (state.isEditing) window.alert(error.message || "The work instruction could not be added.");
+      if (saveButton.isConnected) {
+        saveButton.disabled = false;
+        saveButton.textContent = "Save";
+      }
+    }
+  }
+
+  function createQuickAddRow(entry) {
+    const row = document.createElement("tr");
+    row.className = "quick-add-row";
+    row.append(createCell("+", "serial-cell quick-add-serial"));
+
+    const titleCell = document.createElement("td");
+    const titleInput = document.createElement("input");
+    titleInput.className = "quick-add-input quick-add-title";
+    titleInput.type = "text";
+    titleInput.maxLength = 300;
+    titleInput.placeholder = "Document title";
+    titleInput.setAttribute("aria-label", "New work instruction title");
+    titleCell.append(titleInput);
+
+    const referenceCell = document.createElement("td");
+    const referenceInput = document.createElement("input");
+    referenceInput.className = "quick-add-input quick-add-reference";
+    referenceInput.type = "text";
+    referenceInput.maxLength = 200;
+    referenceInput.placeholder = "Reference number";
+    referenceInput.setAttribute("aria-label", "New work instruction reference number");
+    referenceCell.append(referenceInput);
+
+    const actionCell = document.createElement("td");
+    actionCell.className = "quick-add-actions-cell";
+    const actions = document.createElement("div");
+    actions.className = "quick-add-actions";
+    const save = document.createElement("button");
+    save.type = "button";
+    save.className = "quick-add-save";
+    save.textContent = "Save";
+    save.addEventListener("click", () => saveQuickAdd(titleInput, referenceInput, save));
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "quick-add-cancel";
+    cancel.textContent = "Cancel";
+    cancel.addEventListener("click", cancelQuickAdd);
+    actions.append(save, cancel);
+    actionCell.append(actions);
+
+    titleInput.addEventListener("input", () => titleInput.setCustomValidity(""));
+    referenceInput.addEventListener("input", () => referenceInput.setCustomValidity(""));
+    row.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        saveQuickAdd(titleInput, referenceInput, save);
+      }
+    });
+
+    row.append(titleCell, referenceCell, actionCell);
+    row.append(createCell(state.quickAdd.line, "line-cell"));
+    row.append(
+      createCell(entry.condition, `condition-cell is-${entry.condition.toLocaleLowerCase()}`),
+    );
+    row.append(createCell(state.quickAdd.folder, "folder-cell", state.quickAdd.folder));
     return row;
   }
 
@@ -607,6 +776,7 @@
     elements.addWiButton.hidden = !isEditing;
 
     if (!isEditing) {
+      state.quickAdd = null;
       if (!elements.linkEditor.hidden) closeLinkEditor({ restoreFocus: false });
       if (!elements.pdfUploader.hidden) closePdfUploader({ restoreFocus: false });
       if (!elements.addWiModal.hidden) closeAddWi({ restoreFocus: false });
@@ -862,6 +1032,13 @@
 
       if (document.condition !== previousCondition) {
         fragment.append(createConditionRow(document));
+        if (
+          state.quickAdd &&
+          state.quickAdd.group === document.group &&
+          state.quickAdd.condition === document.condition
+        ) {
+          fragment.append(createQuickAddRow(document));
+        }
         previousCondition = document.condition;
       }
 
@@ -1140,6 +1317,11 @@
 
     if (event.key === "Escape" && !elements.addWiModal.hidden) {
       closeAddWi();
+      return;
+    }
+
+    if (event.key === "Escape" && state.quickAdd) {
+      cancelQuickAdd();
       return;
     }
 

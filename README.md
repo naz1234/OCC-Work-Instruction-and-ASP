@@ -59,6 +59,7 @@ The register itself does not require a login. Original EDMS destinations may sti
 - Search, group filter, line filters, condition filter, exact EDMS folder filter, and sorting.
 - All documents appear together in one continuous, scrollable register with no pagination.
 - Password-protected edit mode for adding and removing work instructions.
+- Section-level **Add** buttons create an inline WI row with inherited group, condition, line, and folder values, avoiding the full add form.
 - Edit controls for adding or updating each reference hyperlink and its displayed title.
 - Hyperlink edits are stored in Cloudflare D1 and loaded on every device.
 - **WI PDF (Not live from EDMS)** column with public Open PDF and protected Upload/Replace actions.
