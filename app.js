@@ -65,6 +65,16 @@
     assignmentSave: document.getElementById("assignment-editor-save"),
     assignmentCancel: document.getElementById("assignment-editor-cancel"),
     assignmentClose: document.getElementById("assignment-editor-close"),
+    renameEditor: document.getElementById("rename-editor-modal"),
+    renameForm: document.getElementById("rename-editor-form"),
+    renameDocument: document.getElementById("rename-editor-document"),
+    renameTitle: document.getElementById("rename-editor-title"),
+    renameLabel: document.getElementById("rename-value-label"),
+    renameValue: document.getElementById("rename-value-input"),
+    renameStatus: document.getElementById("rename-editor-status"),
+    renameSave: document.getElementById("rename-editor-save"),
+    renameCancel: document.getElementById("rename-editor-cancel"),
+    renameClose: document.getElementById("rename-editor-close"),
     aspBlockageSearch: document.getElementById("asp-blockage-search"),
     aspTurnbackSearch: document.getElementById("asp-turnback-search"),
     aspShuttleSearch: document.getElementById("asp-shuttle-search"),
@@ -104,12 +114,16 @@
     pdfUploaderReturnFocus: null,
     activeAssignmentDocument: null,
     assignmentEditorReturnFocus: null,
+    activeRenameDocument: null,
+    activeRenameField: "",
+    renameEditorReturnFocus: null,
     isEditing: false,
     quickAdd: null,
   };
   const linkOverrides = new Map();
   const wiPdfs = new Map();
   const assignmentOverrides = new Map();
+  const textOverrides = new Map();
 
   const uniqueValues = (key) =>
     [...new Set(documents.map((document) => document[key]).filter(Boolean))];
@@ -508,13 +522,22 @@
     titleText.textContent = entry.title;
     titleWrapper.append(titleText);
     if (state.isEditing) {
+      const actions = document.createElement("div");
+      actions.className = "title-row-actions";
+      const rename = document.createElement("button");
+      rename.type = "button";
+      rename.className = "rename-wi-button title-rename-button";
+      rename.textContent = "Rename";
+      rename.setAttribute("aria-label", `Rename document title for ${entry.reference}`);
+      rename.addEventListener("click", () => openRenameEditor(entry, "title", rename));
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "remove-wi-button";
       remove.textContent = "Remove";
       remove.setAttribute("aria-label", `Remove ${entry.reference} from the register`);
       remove.addEventListener("click", () => removeWorkInstruction(entry, remove));
-      titleWrapper.append(remove);
+      actions.append(rename, remove);
+      titleWrapper.append(actions);
     }
     titleCell.append(titleWrapper);
     row.append(titleCell);
@@ -579,7 +602,27 @@
     }
     conditionCell.append(assignmentEntry);
     row.append(conditionCell);
-    row.append(createCell(entry.folder, "folder-cell", entry.folder));
+    const folderCell = document.createElement("td");
+    folderCell.className = "folder-cell";
+    folderCell.title = entry.folder;
+    const folderEntry = document.createElement("div");
+    folderEntry.className = "folder-entry";
+    const folderText = document.createElement("span");
+    folderText.textContent = entry.folder;
+    folderEntry.append(folderText);
+    if (state.isEditing) {
+      const renameFolder = document.createElement("button");
+      renameFolder.type = "button";
+      renameFolder.className = "rename-wi-button folder-rename-button";
+      renameFolder.textContent = "Rename";
+      renameFolder.setAttribute("aria-label", `Rename EDMS folder for ${entry.reference}`);
+      renameFolder.addEventListener("click", () =>
+        openRenameEditor(entry, "folder", renameFolder),
+      );
+      folderEntry.append(renameFolder);
+    }
+    folderCell.append(folderEntry);
+    row.append(folderCell);
     return row;
   }
 
@@ -672,6 +715,92 @@
       }
     } finally {
       elements.assignmentSave.disabled = false;
+    }
+  }
+
+  function setRenameStatus(message, isError = false) {
+    elements.renameStatus.textContent = message;
+    elements.renameStatus.classList.toggle("is-error", isError);
+  }
+
+  function openRenameEditor(entry, field, returnFocus) {
+    if (!state.isEditing) return;
+    state.activeRenameDocument = entry;
+    state.activeRenameField = field;
+    state.renameEditorReturnFocus = returnFocus;
+    const isTitle = field === "title";
+    elements.renameTitle.textContent = isTitle ? "Rename document title" : "Rename EDMS folder";
+    elements.renameLabel.textContent = isTitle ? "Document title" : "EDMS folder";
+    elements.renameDocument.textContent = `${entry.reference} — ${entry.title}`;
+    elements.renameValue.maxLength = isTitle ? 300 : 80;
+    elements.renameValue.value = entry[field];
+    setRenameStatus("");
+    elements.renameEditor.hidden = false;
+    elements.renameValue.focus();
+    elements.renameValue.select();
+  }
+
+  function closeRenameEditor({ restoreFocus = true } = {}) {
+    elements.renameEditor.hidden = true;
+    elements.renameForm.reset();
+    setRenameStatus("");
+    state.activeRenameDocument = null;
+    state.activeRenameField = "";
+    if (restoreFocus && state.renameEditorReturnFocus?.isConnected) {
+      state.renameEditorReturnFocus.focus();
+    }
+    state.renameEditorReturnFocus = null;
+  }
+
+  async function saveDocumentRename(event) {
+    event.preventDefault();
+    const entry = state.activeRenameDocument;
+    const field = state.activeRenameField;
+    if (!entry || !["title", "folder"].includes(field)) return;
+
+    const value = elements.renameValue.value.trim();
+    if (!value) {
+      setRenameStatus(field === "title" ? "Enter the document title." : "Enter the EDMS folder.", true);
+      elements.renameValue.focus();
+      return;
+    }
+
+    elements.renameSave.disabled = true;
+    setRenameStatus("Saving for all devices…");
+    const id = documentKey(entry);
+    try {
+      const response = await fetch(documentsApi, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ action: "rename", id, field, value }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (response.status === 401) setEditMode(false);
+        throw new Error(payload.error || "The new name could not be saved.");
+      }
+
+      textOverrides.set(id, { ...textOverrides.get(id), ...payload.override });
+      documents = orderedDocuments(
+        documents.map((document) =>
+          documentKey(document) === id ? { ...document, [field]: payload.override[field] } : document,
+        ),
+      );
+      closeRenameEditor({ restoreFocus: false });
+      refreshDocumentOptions();
+      render();
+      const buttonClass = field === "title" ? "title-rename-button" : "folder-rename-button";
+      document
+        .querySelector(
+          `.document-row[data-document-key="${CSS.escape(id)}"] .${buttonClass}`,
+        )
+        ?.focus();
+    } catch (error) {
+      if (!elements.renameEditor.hidden) {
+        setRenameStatus(error.message || "The new name could not be saved.", true);
+      }
+    } finally {
+      elements.renameSave.disabled = false;
     }
   }
 
@@ -905,6 +1034,7 @@
       state.quickAdd = null;
       if (!elements.linkEditor.hidden) closeLinkEditor({ restoreFocus: false });
       if (!elements.assignmentEditor.hidden) closeAssignmentEditor({ restoreFocus: false });
+      if (!elements.renameEditor.hidden) closeRenameEditor({ restoreFocus: false });
       if (!elements.pdfUploader.hidden) closePdfUploader({ restoreFocus: false });
       if (!elements.addWiModal.hidden) closeAddWi({ restoreFocus: false });
     }
@@ -1087,6 +1217,10 @@
           assignmentOverrides.set(override.id, override);
         }
       }
+      textOverrides.clear();
+      for (const override of payload.textOverrides || []) {
+        if (override?.id) textOverrides.set(override.id, override);
+      }
       const maxRow = Math.max(0, ...baseDocuments.map((document) => Number(document.row) || 0));
       const maxSerial = Math.max(0, ...baseDocuments.map((document) => Number(document.serial) || 0));
       const custom = customDocuments.map((document, index) => ({
@@ -1109,10 +1243,15 @@
           ...baseDocuments.filter((document) => !removedIds.has(documentKey(document))),
           ...custom,
         ].map((document) => {
-          const override = assignmentOverrides.get(documentKey(document));
-          return override
-            ? { ...document, line: override.line, condition: override.condition }
-            : document;
+          const key = documentKey(document);
+          const assignment = assignmentOverrides.get(key);
+          const text = textOverrides.get(key);
+          return {
+            ...document,
+            ...(assignment ? { line: assignment.line, condition: assignment.condition } : {}),
+            ...(typeof text?.title === "string" && text.title ? { title: text.title } : {}),
+            ...(typeof text?.folder === "string" && text.folder ? { folder: text.folder } : {}),
+          };
         }),
       );
       refreshDocumentOptions();
@@ -1143,6 +1282,8 @@
       }
       linkOverrides.delete(id);
       wiPdfs.delete(id);
+      assignmentOverrides.delete(id);
+      textOverrides.delete(id);
       await loadDocumentChanges();
       elements.addWiButton.focus();
     } catch (error) {
@@ -1368,6 +1509,12 @@
   elements.assignmentEditor.addEventListener("click", (event) => {
     if (event.target === elements.assignmentEditor) closeAssignmentEditor();
   });
+  elements.renameForm.addEventListener("submit", saveDocumentRename);
+  elements.renameCancel.addEventListener("click", () => closeRenameEditor());
+  elements.renameClose.addEventListener("click", () => closeRenameEditor());
+  elements.renameEditor.addEventListener("click", (event) => {
+    if (event.target === elements.renameEditor) closeRenameEditor();
+  });
   elements.pdfForm.addEventListener("submit", uploadWiPdf);
   elements.pdfFile.addEventListener("change", updatePdfFileName);
   elements.pdfCancel.addEventListener("click", () => closePdfUploader());
@@ -1482,6 +1629,11 @@
 
     if (event.key === "Escape" && !elements.assignmentEditor.hidden) {
       closeAssignmentEditor();
+      return;
+    }
+
+    if (event.key === "Escape" && !elements.renameEditor.hidden) {
+      closeRenameEditor();
       return;
     }
 

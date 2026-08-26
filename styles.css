@@ -1090,6 +1090,16 @@ button {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue-600), transparent 82%);
 }
 
+.rename-editor-document {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .link-editor-status {
   min-height: 17px;
   margin: -3px 0 0;
@@ -1478,6 +1488,13 @@ th[data-direction="descending"] .sort-indicator {
   white-space: nowrap;
 }
 
+.title-row-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 5px;
+}
+
 .remove-wi-button {
   height: 23px;
   flex-shrink: 0;
@@ -1494,6 +1511,24 @@ th[data-direction="descending"] .sort-indicator {
 .remove-wi-button:focus-visible {
   border-color: var(--emergency-text);
   background: color-mix(in srgb, var(--emergency-bg), var(--surface) 45%);
+}
+
+.rename-wi-button {
+  height: 23px;
+  flex-shrink: 0;
+  padding: 0 7px;
+  border: 1px solid var(--input-border);
+  border-radius: 3px;
+  color: var(--link);
+  background: var(--surface);
+  font-size: 10.5px;
+  font-weight: 620;
+}
+
+.rename-wi-button:hover,
+.rename-wi-button:focus-visible {
+  border-color: var(--link);
+  background: var(--hover);
 }
 
 .reference-cell {
@@ -1638,6 +1673,20 @@ th[data-direction="descending"] .sort-indicator {
 .assignment-edit-button:focus-visible {
   border-color: var(--link);
   background: var(--hover);
+}
+
+.folder-entry {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.folder-entry > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .group-row td,
