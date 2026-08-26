@@ -1,3 +1,5 @@
+import { requireEditSession } from "../_shared/edit-auth.js";
+
 const jsonHeaders = {
   "Cache-Control": "no-store",
   "Content-Type": "application/json; charset=utf-8",
@@ -12,7 +14,7 @@ function validateOverride(input) {
   const title = typeof input?.title === "string" ? input.title.trim() : "";
   const url = typeof input?.url === "string" ? input.url.trim() : "";
 
-  if (!/^(?:reference-[a-z0-9-]{1,180}|row-\d+)$/.test(id)) {
+  if (!/^(?:reference-[a-z0-9-]{1,180}|row-\d+|custom-[0-9a-f-]{36})$/.test(id)) {
     return { error: "The document identifier is invalid." };
   }
   if (!title) return { error: "Enter a hyperlink title." };
@@ -81,6 +83,8 @@ export async function onRequest(context) {
   }
 
   if (context.request.method === "PUT") {
+    const authorization = await requireEditSession(context.request, context.env);
+    if (!authorization.ok) return json({ error: authorization.error }, authorization.status);
     const contentLength = Number(context.request.headers.get("content-length") || 0);
     if (contentLength > 4096) return json({ error: "The request is too large." }, 413);
 
