@@ -1,9 +1,11 @@
 (() => {
-  "use strict"; 
+  "use strict";
 
   const source = window.OCC_DATA;
   const linkOverridesApi = "/api/link-overrides";
   const wiPdfsApi = "/api/wi-pdfs";
+  const documentsApi = "/api/documents";
+  const editSessionApi = "/api/edit-session";
   const maxPdfBytes = 25 * 1024 * 1024;
 
   if (!source || !Array.isArray(source.documents)) {
@@ -12,7 +14,8 @@
     return;
   }
 
-  const documents = source.documents;
+  const baseDocuments = source.documents.map((document) => ({ ...document }));
+  let documents = [...baseDocuments];
   const aspPlans = Array.isArray(window.ASP_DATA) ? window.ASP_DATA : [];
   const elements = {
     toolbar: document.getElementById("document-toolbar"),
@@ -29,6 +32,30 @@
     scroll: document.getElementById("table-scroll"),
     clear: document.getElementById("clear-filters"),
     theme: document.getElementById("theme-toggle"),
+    editModeToggle: document.getElementById("edit-mode-toggle"),
+    editModeLabel: document.getElementById("edit-mode-label"),
+    addWiButton: document.getElementById("add-wi-button"),
+    editAuthModal: document.getElementById("edit-auth-modal"),
+    editAuthForm: document.getElementById("edit-auth-form"),
+    editPassword: document.getElementById("edit-password-input"),
+    editAuthStatus: document.getElementById("edit-auth-status"),
+    editAuthSubmit: document.getElementById("edit-auth-submit"),
+    editAuthCancel: document.getElementById("edit-auth-cancel"),
+    editAuthClose: document.getElementById("edit-auth-close"),
+    addWiModal: document.getElementById("add-wi-modal"),
+    addWiForm: document.getElementById("add-wi-form"),
+    addWiTitle: document.getElementById("add-wi-document-title"),
+    addWiReference: document.getElementById("add-wi-reference"),
+    addWiLine: document.getElementById("add-wi-line"),
+    addWiCondition: document.getElementById("add-wi-condition"),
+    addWiFolder: document.getElementById("add-wi-folder"),
+    addWiGroup: document.getElementById("add-wi-group"),
+    addWiLinkTitle: document.getElementById("add-wi-link-title"),
+    addWiUrl: document.getElementById("add-wi-url"),
+    addWiStatus: document.getElementById("add-wi-status"),
+    addWiSave: document.getElementById("add-wi-save"),
+    addWiCancel: document.getElementById("add-wi-cancel"),
+    addWiClose: document.getElementById("add-wi-close"),
     aspBlockageSearch: document.getElementById("asp-blockage-search"),
     aspTurnbackSearch: document.getElementById("asp-turnback-search"),
     aspShuttleSearch: document.getElementById("asp-shuttle-search"),
@@ -66,6 +93,7 @@
     linkEditorReturnFocus: null,
     activePdfDocument: null,
     pdfUploaderReturnFocus: null,
+    isEditing: false,
   };
   const linkOverrides = new Map();
   const wiPdfs = new Map();
@@ -74,6 +102,7 @@
     [...new Set(documents.map((document) => document[key]).filter(Boolean))];
 
   const documentKey = (entry) => {
+    if (entry.documentKey) return entry.documentKey;
     const referenceKey = entry.reference
       .toLocaleLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
@@ -84,7 +113,7 @@
   function effectiveLink(entry) {
     const override = linkOverrides.get(documentKey(entry));
     return {
-      title: override?.title ?? entry.reference,
+      title: override?.title ?? entry.linkTitle ?? entry.reference,
       url: override?.url ?? entry.url,
     };
   }
@@ -98,22 +127,44 @@
     }
   }
 
-  const lines = [
-    ...new Set(
-      documents.flatMap((document) =>
-        document.line
-          .split(",")
-          .map((line) => line.trim())
-          .filter(Boolean),
-      ),
-    ),
-  ].sort((left, right) => left.localeCompare(right, undefined, { numeric: true }));
+  function replaceOptions(select, values, formatter = (value) => value, keepFirst = true) {
+    const selected = select.value;
+    while (select.options.length > (keepFirst ? 1 : 0)) select.remove(select.options.length - 1);
+    addOptions(select, values, formatter);
+    select.value = [...select.options].some((option) => option.value === selected) ? selected : "";
+    if (!keepFirst && !select.value && select.options.length) select.selectedIndex = 0;
+  }
 
-  addOptions(elements.group, uniqueValues("group"));
-  addOptions(elements.line, lines, (line) => `Line ${line}`);
-  addOptions(elements.headerLine, lines, (line) => `Line ${line}`);
-  addOptions(elements.condition, uniqueValues("condition"));
-  addOptions(elements.folder, uniqueValues("folder").sort());
+  function refreshDocumentOptions() {
+    const lines = [
+      ...new Set(
+        documents.flatMap((document) =>
+          document.line
+            .split(",")
+            .map((line) => line.trim())
+            .filter(Boolean),
+        ),
+      ),
+    ].sort((left, right) => left.localeCompare(right, undefined, { numeric: true }));
+    const groups = uniqueValues("group");
+    const conditions = uniqueValues("condition");
+    const availableGroups = [
+      ...new Set([...baseDocuments, ...documents].map((document) => document.group).filter(Boolean)),
+    ];
+    const availableConditions = [
+      ...new Set([...baseDocuments, ...documents].map((document) => document.condition).filter(Boolean)),
+    ];
+
+    replaceOptions(elements.group, groups);
+    replaceOptions(elements.line, lines, (line) => `Line ${line}`);
+    replaceOptions(elements.headerLine, lines, (line) => `Line ${line}`);
+    replaceOptions(elements.condition, conditions);
+    replaceOptions(elements.folder, uniqueValues("folder").sort());
+    replaceOptions(elements.addWiGroup, availableGroups, (value) => value, false);
+    replaceOptions(elements.addWiCondition, availableConditions, (value) => value, false);
+  }
+
+  refreshDocumentOptions();
 
   function lineMatches(document, selectedLine) {
     if (!selectedLine) return true;
@@ -235,16 +286,23 @@
       wrapper.append(open);
     }
 
-    const upload = document.createElement("button");
-    upload.type = "button";
-    upload.className = "wi-pdf-upload";
-    upload.textContent = metadata ? "Replace" : "Upload PDF";
-    upload.setAttribute(
-      "aria-label",
-      `${metadata ? "Replace" : "Upload"} WI PDF for ${entry.reference}`,
-    );
-    upload.addEventListener("click", () => openPdfUploader(entry, upload));
-    wrapper.append(upload);
+    if (state.isEditing) {
+      const upload = document.createElement("button");
+      upload.type = "button";
+      upload.className = "wi-pdf-upload";
+      upload.textContent = metadata ? "Replace" : "Upload PDF";
+      upload.setAttribute(
+        "aria-label",
+        `${metadata ? "Replace" : "Upload"} WI PDF for ${entry.reference}`,
+      );
+      upload.addEventListener("click", () => openPdfUploader(entry, upload));
+      wrapper.append(upload);
+    } else if (!metadata) {
+      const missing = document.createElement("span");
+      missing.className = "wi-pdf-missing";
+      missing.textContent = "No PDF";
+      wrapper.append(missing);
+    }
     cell.append(wrapper);
     return cell;
   }
@@ -252,10 +310,28 @@
   function createDocumentRow(entry) {
     const row = document.createElement("tr");
     row.className = "document-row";
-    row.dataset.sourceRow = String(entry.row);
+    row.dataset.documentKey = documentKey(entry);
 
     row.append(createCell(entry.serial, "serial-cell"));
-    row.append(createCell(entry.title, "title-cell", entry.title));
+    const titleCell = document.createElement("td");
+    titleCell.className = "title-cell";
+    titleCell.title = entry.title;
+    const titleWrapper = document.createElement("div");
+    titleWrapper.className = "title-entry";
+    const titleText = document.createElement("span");
+    titleText.textContent = entry.title;
+    titleWrapper.append(titleText);
+    if (state.isEditing) {
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "remove-wi-button";
+      remove.textContent = "Remove";
+      remove.setAttribute("aria-label", `Remove ${entry.reference} from the register`);
+      remove.addEventListener("click", () => removeWorkInstruction(entry, remove));
+      titleWrapper.append(remove);
+    }
+    titleCell.append(titleWrapper);
+    row.append(titleCell);
 
     const reference = document.createElement("td");
     reference.className = "reference-cell";
@@ -282,13 +358,16 @@
       referenceContent.append(plainReference);
     }
 
-    const editLink = document.createElement("button");
-    editLink.type = "button";
-    editLink.className = "link-edit-button";
-    editLink.textContent = "Edit";
-    editLink.setAttribute("aria-label", `Edit hyperlink for ${currentLink.title}`);
-    editLink.addEventListener("click", () => openLinkEditor(entry, editLink));
-    referenceEditor.append(referenceContent, editLink);
+    referenceEditor.append(referenceContent);
+    if (state.isEditing) {
+      const editLink = document.createElement("button");
+      editLink.type = "button";
+      editLink.className = "link-edit-button";
+      editLink.textContent = "Edit";
+      editLink.setAttribute("aria-label", `Edit hyperlink for ${currentLink.title}`);
+      editLink.addEventListener("click", () => openLinkEditor(entry, editLink));
+      referenceEditor.append(editLink);
+    }
     reference.append(referenceEditor);
 
     row.append(reference);
@@ -307,6 +386,7 @@
   }
 
   function openLinkEditor(entry, returnFocus) {
+    if (!state.isEditing) return;
     const currentLink = effectiveLink(entry);
     state.activeLinkDocument = entry;
     state.linkEditorReturnFocus = returnFocus;
@@ -368,15 +448,16 @@
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
+        if (response.status === 401) setEditMode(false);
         throw new Error(payload.error || "The shared link could not be saved.");
       }
 
       linkOverrides.set(documentKey(entry), payload.override);
-      const sourceRow = entry.row;
+      const savedDocumentKey = documentKey(entry);
       closeLinkEditor({ restoreFocus: false });
       render();
       document
-        .querySelector(`.document-row[data-source-row="${sourceRow}"] .link-edit-button`)
+        .querySelector(`.document-row[data-document-key="${CSS.escape(savedDocumentKey)}"] .link-edit-button`)
         ?.focus();
     } catch (error) {
       setLinkStatus(error.message || "The shared link could not be saved.", true);
@@ -416,6 +497,7 @@
   }
 
   function openPdfUploader(entry, returnFocus) {
+    if (!state.isEditing) return;
     state.activePdfDocument = entry;
     state.pdfUploaderReturnFocus = returnFocus;
     elements.pdfDocument.textContent = `${entry.reference} — ${entry.title}`;
@@ -468,14 +550,17 @@
         body: formData,
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || "The WI PDF could not be uploaded.");
+      if (!response.ok) {
+        if (response.status === 401) setEditMode(false);
+        throw new Error(payload.error || "The WI PDF could not be uploaded.");
+      }
 
       wiPdfs.set(documentKey(entry), payload.pdf);
-      const sourceRow = entry.row;
+      const savedDocumentKey = documentKey(entry);
       closePdfUploader({ restoreFocus: false });
       render();
       document
-        .querySelector(`.document-row[data-source-row="${sourceRow}"] .wi-pdf-upload`)
+        .querySelector(`.document-row[data-document-key="${CSS.escape(savedDocumentKey)}"] .wi-pdf-upload`)
         ?.focus();
     } catch (error) {
       setPdfStatus(error.message || "The WI PDF could not be uploaded.", true);
@@ -498,6 +583,257 @@
       render();
     } catch {
       // The register remains usable while PDF storage is unavailable.
+    }
+  }
+
+  function setEditAuthStatus(message, isError = false) {
+    elements.editAuthStatus.textContent = message;
+    elements.editAuthStatus.classList.toggle("is-error", isError);
+  }
+
+  function setAddWiStatus(message, isError = false) {
+    elements.addWiStatus.textContent = message;
+    elements.addWiStatus.classList.toggle("is-error", isError);
+  }
+
+  function setEditMode(isEditing) {
+    state.isEditing = isEditing;
+    document.body.classList.toggle("is-edit-mode", isEditing);
+    elements.editModeToggle.classList.toggle("is-active", isEditing);
+    elements.editModeToggle.setAttribute("aria-pressed", String(isEditing));
+    elements.editModeToggle.setAttribute("aria-haspopup", isEditing ? "false" : "dialog");
+    elements.editModeLabel.textContent = isEditing ? "Exit edit" : "Edit mode";
+    elements.editModeToggle.title = isEditing ? "Exit edit mode" : "Unlock edit mode";
+    elements.addWiButton.hidden = !isEditing;
+
+    if (!isEditing) {
+      if (!elements.linkEditor.hidden) closeLinkEditor({ restoreFocus: false });
+      if (!elements.pdfUploader.hidden) closePdfUploader({ restoreFocus: false });
+      if (!elements.addWiModal.hidden) closeAddWi({ restoreFocus: false });
+    }
+    render();
+  }
+
+  function openEditAuth() {
+    elements.editAuthForm.reset();
+    setEditAuthStatus("");
+    elements.editAuthModal.hidden = false;
+    elements.editPassword.focus();
+  }
+
+  function closeEditAuth({ restoreFocus = true } = {}) {
+    elements.editAuthModal.hidden = true;
+    elements.editAuthForm.reset();
+    setEditAuthStatus("");
+    if (restoreFocus) elements.editModeToggle.focus();
+  }
+
+  async function unlockEditMode(event) {
+    event.preventDefault();
+    const password = elements.editPassword.value;
+    if (!password) {
+      setEditAuthStatus("Enter the edit-mode password.", true);
+      elements.editPassword.focus();
+      return;
+    }
+
+    elements.editAuthSubmit.disabled = true;
+    setEditAuthStatus("Checking password…");
+    try {
+      const response = await fetch(editSessionApi, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Edit mode could not be unlocked.");
+
+      closeEditAuth({ restoreFocus: false });
+      setEditMode(true);
+      elements.addWiButton.focus();
+    } catch (error) {
+      setEditAuthStatus(error.message || "Edit mode could not be unlocked.", true);
+      elements.editPassword.select();
+    } finally {
+      elements.editAuthSubmit.disabled = false;
+    }
+  }
+
+  async function loadEditSession() {
+    try {
+      const response = await fetch(editSessionApi, {
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      if (!response.ok) return;
+      const payload = await response.json();
+      setEditMode(payload.authenticated === true);
+    } catch {
+      setEditMode(false);
+    }
+  }
+
+  async function exitEditMode() {
+    elements.editModeToggle.disabled = true;
+    try {
+      await fetch(editSessionApi, { method: "DELETE", headers: { Accept: "application/json" } });
+    } finally {
+      elements.editModeToggle.disabled = false;
+      setEditMode(false);
+      elements.editModeToggle.focus();
+    }
+  }
+
+  function openAddWi() {
+    if (!state.isEditing) return;
+    elements.addWiForm.reset();
+    refreshDocumentOptions();
+    elements.addWiLine.value = "3,4,5,6";
+    elements.addWiFolder.value = "OCC";
+    setAddWiStatus("");
+    elements.addWiModal.hidden = false;
+    elements.addWiTitle.focus();
+  }
+
+  function closeAddWi({ restoreFocus = true } = {}) {
+    elements.addWiModal.hidden = true;
+    elements.addWiForm.reset();
+    setAddWiStatus("");
+    if (restoreFocus && state.isEditing) elements.addWiButton.focus();
+  }
+
+  async function addWorkInstruction(event) {
+    event.preventDefault();
+    if (!state.isEditing) return;
+
+    const input = {
+      title: elements.addWiTitle.value.trim(),
+      reference: elements.addWiReference.value.trim(),
+      line: elements.addWiLine.value.trim(),
+      condition: elements.addWiCondition.value,
+      folder: elements.addWiFolder.value.trim(),
+      group: elements.addWiGroup.value,
+      linkTitle: elements.addWiLinkTitle.value.trim(),
+      url: elements.addWiUrl.value.trim(),
+    };
+    if (documents.some((document) => document.reference.toLocaleLowerCase() === input.reference.toLocaleLowerCase())) {
+      setAddWiStatus("That reference number already exists.", true);
+      elements.addWiReference.focus();
+      return;
+    }
+    if (!validHttpUrl(input.url)) {
+      setAddWiStatus("Enter a complete http:// or https:// URL.", true);
+      elements.addWiUrl.focus();
+      return;
+    }
+
+    elements.addWiSave.disabled = true;
+    setAddWiStatus("Saving for all devices…");
+    try {
+      const response = await fetch(documentsApi, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(input),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (response.status === 401) setEditMode(false);
+        throw new Error(payload.error || "The work instruction could not be added.");
+      }
+
+      const addedId = payload.document?.id;
+      closeAddWi({ restoreFocus: false });
+      await loadDocumentChanges();
+      resetFilters();
+      document
+        .querySelector(`.document-row[data-document-key="${CSS.escape(addedId || "")}"] .remove-wi-button`)
+        ?.focus();
+    } catch (error) {
+      if (!elements.addWiModal.hidden) {
+        setAddWiStatus(error.message || "The work instruction could not be added.", true);
+      }
+    } finally {
+      elements.addWiSave.disabled = false;
+    }
+  }
+
+  function orderedDocuments(entries) {
+    const groupOrder = [...new Set(baseDocuments.map((document) => document.group))];
+    const conditionOrder = [...new Set(baseDocuments.map((document) => document.condition))];
+    return [...entries].sort((left, right) => {
+      const groupDifference = groupOrder.indexOf(left.group) - groupOrder.indexOf(right.group);
+      if (groupDifference) return groupDifference;
+      const conditionDifference =
+        conditionOrder.indexOf(left.condition) - conditionOrder.indexOf(right.condition);
+      if (conditionDifference) return conditionDifference;
+      return left.row - right.row;
+    });
+  }
+
+  async function loadDocumentChanges() {
+    try {
+      const response = await fetch(documentsApi, {
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      if (!response.ok) return;
+      const payload = await response.json();
+      const removedIds = new Set(Array.isArray(payload.removedIds) ? payload.removedIds : []);
+      const customDocuments = Array.isArray(payload.documents) ? payload.documents : [];
+      const maxRow = Math.max(0, ...baseDocuments.map((document) => Number(document.row) || 0));
+      const maxSerial = Math.max(0, ...baseDocuments.map((document) => Number(document.serial) || 0));
+      const custom = customDocuments.map((document, index) => ({
+        documentKey: document.id,
+        row: maxRow + index + 1,
+        serial: String(maxSerial + index + 1),
+        title: document.title,
+        reference: document.reference,
+        line: document.line,
+        folder: document.folder,
+        url: document.url || "",
+        linkTitle: document.linkTitle || document.reference,
+        group: document.group,
+        condition: document.condition,
+        createdAt: document.createdAt,
+        isCustom: true,
+      }));
+      documents = orderedDocuments([
+        ...baseDocuments.filter((document) => !removedIds.has(documentKey(document))),
+        ...custom,
+      ]);
+      refreshDocumentOptions();
+      render();
+    } catch {
+      // The static register remains available while shared document changes are unavailable.
+    }
+  }
+
+  async function removeWorkInstruction(entry, button) {
+    if (!state.isEditing) return;
+    const confirmed = window.confirm(
+      `Remove ${entry.reference} — ${entry.title}?\n\nIts saved hyperlink and uploaded WI PDF will also be removed.`,
+    );
+    if (!confirmed) return;
+
+    button.disabled = true;
+    const id = documentKey(entry);
+    try {
+      const response = await fetch(`${documentsApi}?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (response.status === 401) setEditMode(false);
+        throw new Error(payload.error || "The work instruction could not be removed.");
+      }
+      linkOverrides.delete(id);
+      wiPdfs.delete(id);
+      await loadDocumentChanges();
+      elements.addWiButton.focus();
+    } catch (error) {
+      window.alert(error.message || "The work instruction could not be removed.");
+      if (button.isConnected) button.disabled = false;
     }
   }
 
@@ -682,6 +1018,23 @@
   elements.condition.addEventListener("change", refreshResults);
   elements.folder.addEventListener("change", refreshResults);
   elements.clear.addEventListener("click", resetFilters);
+  elements.editModeToggle.addEventListener("click", () => {
+    if (state.isEditing) exitEditMode();
+    else openEditAuth();
+  });
+  elements.editAuthForm.addEventListener("submit", unlockEditMode);
+  elements.editAuthCancel.addEventListener("click", () => closeEditAuth());
+  elements.editAuthClose.addEventListener("click", () => closeEditAuth());
+  elements.editAuthModal.addEventListener("click", (event) => {
+    if (event.target === elements.editAuthModal) closeEditAuth();
+  });
+  elements.addWiButton.addEventListener("click", openAddWi);
+  elements.addWiForm.addEventListener("submit", addWorkInstruction);
+  elements.addWiCancel.addEventListener("click", () => closeAddWi());
+  elements.addWiClose.addEventListener("click", () => closeAddWi());
+  elements.addWiModal.addEventListener("click", (event) => {
+    if (event.target === elements.addWiModal) closeAddWi();
+  });
   elements.linkForm.addEventListener("submit", saveLinkOverride);
   elements.linkCancel.addEventListener("click", () => closeLinkEditor());
   elements.linkClose.addEventListener("click", () => closeLinkEditor());
@@ -780,6 +1133,16 @@
   });
 
   document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !elements.editAuthModal.hidden) {
+      closeEditAuth();
+      return;
+    }
+
+    if (event.key === "Escape" && !elements.addWiModal.hidden) {
+      closeAddWi();
+      return;
+    }
+
     if (event.key === "Escape" && !elements.pdfUploader.hidden) {
       closePdfUploader();
       return;
@@ -815,6 +1178,8 @@
 
   render();
   renderAspPlans();
+  loadDocumentChanges();
   loadLinkOverrides();
   loadWiPdfs();
+  loadEditSession();
 })();

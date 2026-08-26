@@ -4,7 +4,7 @@ Line 3 OCC Work Instruction and ASP
 
 ## OCC Work Instructions
 
-A public, login-free document register for Cloudflare Pages. The main site stays framework-free and requires no build command. Pages Functions use Cloudflare D1 for shared metadata and R2 for uploaded WI PDF files so saved content appears on every device.
+A public, read-only document register for Cloudflare Pages with a password-protected edit mode. The main site stays framework-free and requires no build command. Pages Functions use Cloudflare D1 for shared metadata and R2 for uploaded WI PDF files so saved content appears on every device.
 
 ## Deploy with GitHub and Cloudflare Pages
 
@@ -29,8 +29,6 @@ A public, login-free document register for Cloudflare Pages. The main site stays
 4. Add the same binding to both Production and Preview when PR previews must support editing.
 5. Redeploy the Pages project so the binding takes effect.
 
-The editor intentionally has no PIN or login. Anyone who can open the site can update a reference title or URL. Use Cloudflare's site access controls when edit access must be restricted to a group.
-
 ### Enable shared WI PDF uploads
 
 1. Apply `migrations/0002_create_wi_pdfs.sql` to the same `occ-work-instructions` D1 database.
@@ -39,7 +37,17 @@ The editor intentionally has no PIN or login. Anyone who can open the site can u
 4. Add the binding to Production. Repeat for Preview only when PR preview deployments must support PDF uploads.
 5. Redeploy the Pages project so the new Function and binding take effect.
 
-Each work instruction supports one PDF of up to 25 MB. Uploading another PDF for the same work instruction replaces the existing file. The uploader has no PIN or login, matching the hyperlink editor.
+Each work instruction supports one PDF of up to 25 MB. Uploading another PDF for the same work instruction replaces the existing file.
+
+### Enable password-protected edit mode
+
+1. Apply `migrations/0003_create_document_editor.sql` to the same `occ-work-instructions` D1 database.
+2. In the Pages project, open **Settings** → **Variables and Secrets** for Production.
+3. Add an encrypted secret named `EDIT_PASSWORD` and set its value to the required edit-mode password.
+4. Repeat for Preview if PR preview deployments must support edit mode.
+5. Redeploy the Pages project.
+
+The password is checked only by the Pages Function and is never committed to this repository or exposed to browser JavaScript. A successful unlock creates a secure, HTTP-only edit session lasting up to 8 hours. Reading the register, opening hyperlinks, and opening PDFs remain available without a password. Adding/removing work instructions, editing hyperlinks, and uploading/replacing PDFs require edit mode.
 
 The register itself does not require a login. Original EDMS destinations may still ask for organization credentials because their access is controlled by EDMS, not this website.
 
@@ -50,9 +58,10 @@ The register itself does not require a login. Original EDMS destinations may sti
 - References without an Excel hyperlink remain visible as plain text.
 - Search, group filter, line filters, condition filter, exact EDMS folder filter, and sorting.
 - All documents appear together in one continuous, scrollable register with no pagination.
-- PIN-free Edit button for adding or updating each reference hyperlink and its displayed title.
+- Password-protected edit mode for adding and removing work instructions.
+- Edit controls for adding or updating each reference hyperlink and its displayed title.
 - Hyperlink edits are stored in Cloudflare D1 and loaded on every device.
-- **WI PDF (Not live from EDMS)** column with Upload PDF, Open PDF, and Replace actions.
+- **WI PDF (Not live from EDMS)** column with public Open PDF and protected Upload/Replace actions.
 - WI PDFs are stored privately in Cloudflare R2 with shared metadata in D1.
 - 22 Alternative Services Mainline plans with station-level blockage, turnback, and shuttle details.
 - Separate targeted search fields for line blockage, turnback, and shuttle details.

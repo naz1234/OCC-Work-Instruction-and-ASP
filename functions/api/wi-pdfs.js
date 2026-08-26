@@ -1,4 +1,6 @@
-const maxPdfBytes = 25 * 1024 * 1024; 
+import { requireEditSession } from "../_shared/edit-auth.js";
+
+const maxPdfBytes = 25 * 1024 * 1024;
 const maxRequestBytes = maxPdfBytes + 1024 * 1024;
 const jsonHeaders = {
   "Cache-Control": "no-store",
@@ -10,7 +12,7 @@ function json(body, status = 200) {
 }
 
 function validDocumentId(id) {
-  return /^(?:reference-[a-z0-9-]{1,180}|row-\d+)$/.test(id);
+  return /^(?:reference-[a-z0-9-]{1,180}|row-\d+|custom-[0-9a-f-]{36})$/.test(id);
 }
 
 function safeFileName(value) {
@@ -153,6 +155,8 @@ export async function onRequest(context) {
   }
 
   if (context.request.method === "PUT") {
+    const authorization = await requireEditSession(context.request, context.env);
+    if (!authorization.ok) return json({ error: authorization.error }, authorization.status);
     if (!context.env.WI_PDFS) return json({ error: "The WI_PDFS R2 binding is not configured." }, 503);
     try {
       return await uploadPdf(context.request, database, context.env.WI_PDFS);
