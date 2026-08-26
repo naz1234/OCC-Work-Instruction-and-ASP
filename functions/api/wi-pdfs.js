@@ -1,4 +1,4 @@
-const maxPdfBytes = 25 * 1024 * 1024;
+const maxPdfBytes = 25 * 1024 * 1024; 
 const maxRequestBytes = maxPdfBytes + 1024 * 1024;
 const jsonHeaders = {
   "Cache-Control": "no-store",
