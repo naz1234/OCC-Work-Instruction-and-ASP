@@ -237,11 +237,17 @@
         <form id="pdf-upload-form">
           <div class="pdf-upload-fields">
             <p class="pdf-upload-document" id="pdf-upload-document"></p>
-            <label for="pdf-file-input">
-              <span>PDF file</span>
-              <input id="pdf-file-input" name="file" type="file" accept="application/pdf,.pdf" required />
+            <div class="pdf-file-field">
+              <span id="pdf-file-label">PDF file</span>
+              <div class="pdf-file-picker">
+                <input id="pdf-file-input" name="file" type="file" accept="application/pdf,.pdf" aria-labelledby="pdf-file-label pdf-file-name" required />
+                <label for="pdf-file-input">
+                  <span class="pdf-file-name" id="pdf-file-name">No file selected</span>
+                  <span class="pdf-file-trigger" aria-hidden="true">Choose PDF</span>
+                </label>
+              </div>
               <small>One PDF per work instruction, maximum 25 MB. Uploading again replaces the current PDF.</small>
-            </label>
+            </div>
             <p class="pdf-upload-status" id="pdf-upload-status" role="status" aria-live="polite"></p>
           </div>
 
