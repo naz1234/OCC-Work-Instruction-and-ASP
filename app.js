@@ -1,5 +1,5 @@
 (() => {
-  "use strict";
+  "use strict"; 
 
   const source = window.OCC_DATA;
   const linkOverridesApi = "/api/link-overrides";
