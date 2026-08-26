@@ -1558,6 +1558,109 @@ th[data-direction="descending"] .sort-indicator {
   background: var(--emergency-bg);
 }
 
+.condition-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.condition-heading > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-add-button {
+  height: 23px;
+  flex-shrink: 0;
+  padding: 0 10px;
+  border: 1px solid #4a8cff;
+  border-radius: 3px;
+  color: #fff;
+  background: var(--blue-600);
+  font-size: 10.5px;
+  font-weight: 680;
+}
+
+.quick-add-button:hover,
+.quick-add-button:focus-visible {
+  border-color: #9fc0ff;
+  filter: brightness(1.1);
+}
+
+.quick-add-row td {
+  height: 42px;
+  padding: 4px 7px;
+  background: color-mix(in srgb, var(--blue-600), var(--surface) 94%);
+}
+
+.quick-add-row:hover td {
+  background: color-mix(in srgb, var(--blue-600), var(--surface) 90%);
+}
+
+.quick-add-serial {
+  color: var(--blue-600);
+  font-size: 18px !important;
+  font-weight: 700;
+}
+
+.quick-add-input {
+  width: 100%;
+  height: 30px;
+  min-width: 0;
+  padding: 0 8px;
+  border: 1px solid var(--input-border);
+  border-radius: 3px;
+  outline: 0;
+  color: var(--text);
+  background: var(--surface);
+  font-size: 12px;
+}
+
+.quick-add-input:focus {
+  border-color: var(--blue-600);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--blue-600), transparent 80%);
+}
+
+.quick-add-actions-cell {
+  text-align: center;
+}
+
+.quick-add-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.quick-add-save,
+.quick-add-cancel {
+  height: 25px;
+  padding: 0 8px;
+  border-radius: 3px;
+  font-size: 10.5px;
+  font-weight: 650;
+}
+
+.quick-add-save {
+  border: 1px solid var(--blue-600);
+  color: #fff;
+  background: var(--blue-600);
+}
+
+.quick-add-cancel {
+  border: 1px solid var(--input-border);
+  color: var(--text);
+  background: var(--surface);
+}
+
+.quick-add-save:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .empty-row td {
   height: 150px;
   color: var(--muted);
