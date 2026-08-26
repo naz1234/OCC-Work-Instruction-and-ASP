@@ -1601,9 +1601,26 @@ th[data-direction="descending"] .sort-indicator {
 }
 
 .quick-add-serial {
-  color: var(--blue-600);
-  font-size: 18px !important;
+  padding: 0 !important;
+}
+
+.quick-add-remove {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--emergency-text), transparent 35%);
+  border-radius: 50%;
+  color: #fff;
+  background: color-mix(in srgb, var(--emergency-text), #8d1024 35%);
+  font-size: 20px;
   font-weight: 700;
+  line-height: 21px;
+}
+
+.quick-add-remove:hover,
+.quick-add-remove:focus-visible {
+  border-color: #fff;
+  filter: brightness(1.12);
 }
 
 .quick-add-input {
@@ -1635,8 +1652,7 @@ th[data-direction="descending"] .sort-indicator {
   gap: 5px;
 }
 
-.quick-add-save,
-.quick-add-cancel {
+.quick-add-save {
   height: 25px;
   padding: 0 8px;
   border-radius: 3px;
@@ -1648,12 +1664,6 @@ th[data-direction="descending"] .sort-indicator {
   border: 1px solid var(--blue-600);
   color: #fff;
   background: var(--blue-600);
-}
-
-.quick-add-cancel {
-  border: 1px solid var(--input-border);
-  color: var(--text);
-  background: var(--surface);
 }
 
 .quick-add-save:disabled {
