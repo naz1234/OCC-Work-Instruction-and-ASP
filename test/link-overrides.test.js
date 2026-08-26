@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { createSessionToken } from "../functions/_shared/edit-auth.js";
 import { onRequest, validateOverride } from "../functions/api/link-overrides.js";
+
+const editPassword = "test-edit-password";
+
+async function editCookie() {
+  return `occ_edit_session=${await createSessionToken(editPassword)}`;
+}
 
 class FakeDatabase {
   constructor() {
@@ -42,11 +49,12 @@ test("validates hyperlink title and protocol", () => {
 
 test("saves and returns shared hyperlink overrides", async () => {
   const database = new FakeDatabase();
+  const cookie = await editCookie();
   const putResponse = await onRequest({
-    env: { OCC_LINKS: database },
+    env: { OCC_LINKS: database, EDIT_PASSWORD: editPassword },
     request: new Request("https://example.com/api/link-overrides", {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Cookie: cookie },
       body: JSON.stringify({ id: "reference-ope-fc-001-01", title: "Updated reference", url: "https://example.com/doc" }),
     }),
   });
@@ -60,6 +68,19 @@ test("saves and returns shared hyperlink overrides", async () => {
   assert.deepEqual((await getResponse.json()).overrides.map(({ id, title, url }) => ({ id, title, url })), [
     { id: "reference-ope-fc-001-01", title: "Updated reference", url: "https://example.com/doc" },
   ]);
+});
+
+test("rejects hyperlink changes outside edit mode", async () => {
+  const response = await onRequest({
+    env: { OCC_LINKS: new FakeDatabase(), EDIT_PASSWORD: editPassword },
+    request: new Request("https://example.com/api/link-overrides", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: "row-7", title: "Reference", url: "" }),
+    }),
+  });
+  assert.equal(response.status, 401);
+  assert.match((await response.json()).error, /Unlock edit mode/);
 });
 
 test("reports a missing Cloudflare D1 binding", async () => {
