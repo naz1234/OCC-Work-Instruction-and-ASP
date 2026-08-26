@@ -273,7 +273,7 @@
       const add = document.createElement("button");
       add.type = "button";
       add.className = "quick-add-button";
-      add.textContent = "Add";
+      add.textContent = `Add Wi (${entry.condition})`;
       add.dataset.sectionKey = sectionKey(entry.group, entry.condition);
       add.setAttribute(
         "aria-label",
@@ -382,7 +382,17 @@
   function createQuickAddRow(entry) {
     const row = document.createElement("tr");
     row.className = "quick-add-row";
-    row.append(createCell("+", "serial-cell quick-add-serial"));
+    const cancelCell = document.createElement("td");
+    cancelCell.className = "serial-cell quick-add-serial";
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "quick-add-remove";
+    cancel.textContent = "−";
+    cancel.title = "Cancel adding this work instruction";
+    cancel.setAttribute("aria-label", "Cancel adding this work instruction");
+    cancel.addEventListener("click", cancelQuickAdd);
+    cancelCell.append(cancel);
+    row.append(cancelCell);
 
     const titleCell = document.createElement("td");
     const titleInput = document.createElement("input");
@@ -411,12 +421,7 @@
     save.className = "quick-add-save";
     save.textContent = "Save";
     save.addEventListener("click", () => saveQuickAdd(titleInput, referenceInput, save));
-    const cancel = document.createElement("button");
-    cancel.type = "button";
-    cancel.className = "quick-add-cancel";
-    cancel.textContent = "Cancel";
-    cancel.addEventListener("click", cancelQuickAdd);
-    actions.append(save, cancel);
+    actions.append(save);
     actionCell.append(actions);
 
     titleInput.addEventListener("input", () => titleInput.setCustomValidity(""));
