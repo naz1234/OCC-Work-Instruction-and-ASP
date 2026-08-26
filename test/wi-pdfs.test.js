@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { createSessionToken } from "../functions/_shared/edit-auth.js";
 import { onRequest, safeFileName } from "../functions/api/wi-pdfs.js";
+
+const editPassword = "test-edit-password";
 
 class FakeDatabase {
   constructor() {
@@ -55,11 +58,14 @@ class FakeBucket {
   }
 }
 
-function uploadRequest(file) {
+async function uploadRequest(file, authenticated = true) {
   const form = new FormData();
   form.append("id", "reference-ope-in-095-01");
   form.append("file", file);
-  return new Request("https://example.com/api/wi-pdfs", { method: "PUT", body: form });
+  const headers = authenticated
+    ? { Cookie: `occ_edit_session=${await createSessionToken(editPassword)}` }
+    : {};
+  return new Request("https://example.com/api/wi-pdfs", { method: "PUT", headers, body: form });
 }
 
 test("sanitizes uploaded PDF filenames", () => {
@@ -75,8 +81,8 @@ test("uploads, lists, and serves a shared WI PDF", async () => {
   });
 
   const upload = await onRequest({
-    env: { OCC_LINKS: database, WI_PDFS: bucket },
-    request: uploadRequest(file),
+    env: { OCC_LINKS: database, WI_PDFS: bucket, EDIT_PASSWORD: editPassword },
+    request: await uploadRequest(file),
   });
   assert.equal(upload.status, 200);
   assert.equal((await upload.json()).pdf.fileName, "OPE-IN-095-01.pdf");
@@ -99,8 +105,8 @@ test("uploads, lists, and serves a shared WI PDF", async () => {
 
 test("rejects a renamed non-PDF file", async () => {
   const response = await onRequest({
-    env: { OCC_LINKS: new FakeDatabase(), WI_PDFS: new FakeBucket() },
-    request: uploadRequest(new File(["not a pdf"], "fake.pdf", { type: "application/pdf" })),
+    env: { OCC_LINKS: new FakeDatabase(), WI_PDFS: new FakeBucket(), EDIT_PASSWORD: editPassword },
+    request: await uploadRequest(new File(["not a pdf"], "fake.pdf", { type: "application/pdf" })),
   });
   assert.equal(response.status, 400);
   assert.match((await response.json()).error, /valid PDF/);
@@ -108,9 +114,21 @@ test("rejects a renamed non-PDF file", async () => {
 
 test("reports a missing R2 binding", async () => {
   const response = await onRequest({
-    env: { OCC_LINKS: new FakeDatabase() },
-    request: uploadRequest(new File(["%PDF-"], "test.pdf", { type: "application/pdf" })),
+    env: { OCC_LINKS: new FakeDatabase(), EDIT_PASSWORD: editPassword },
+    request: await uploadRequest(new File(["%PDF-"], "test.pdf", { type: "application/pdf" })),
   });
   assert.equal(response.status, 503);
   assert.match((await response.json()).error, /WI_PDFS/);
+});
+
+test("rejects PDF uploads outside edit mode", async () => {
+  const response = await onRequest({
+    env: { OCC_LINKS: new FakeDatabase(), WI_PDFS: new FakeBucket(), EDIT_PASSWORD: editPassword },
+    request: await uploadRequest(
+      new File(["%PDF-"], "test.pdf", { type: "application/pdf" }),
+      false,
+    ),
+  });
+  assert.equal(response.status, 401);
+  assert.match((await response.json()).error, /Unlock edit mode/);
 });
