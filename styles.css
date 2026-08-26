@@ -893,25 +893,79 @@ button {
   line-height: 1.45;
 }
 
-.pdf-upload-fields label {
+.pdf-file-field {
   display: grid;
   gap: 7px;
 }
 
-.pdf-upload-fields label > span {
+.pdf-file-field > span {
   color: var(--text);
   font-size: 12px;
   font-weight: 640;
 }
 
-.pdf-upload-fields input[type="file"] {
+.pdf-file-picker {
+  position: relative;
+}
+
+.pdf-file-picker input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pdf-file-picker label {
+  display: flex;
   width: 100%;
-  padding: 10px;
+  min-height: 43px;
+  align-items: stretch;
+  justify-content: space-between;
   border: 1px solid var(--input-border);
   border-radius: 4px;
   color: var(--text);
   background: var(--surface);
   font-size: 12px;
+  cursor: pointer;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.pdf-file-picker label:hover {
+  border-color: var(--link);
+}
+
+.pdf-file-picker input[type="file"]:focus-visible + label {
+  border-color: var(--link);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--link), transparent 78%);
+}
+
+.pdf-file-name {
+  min-width: 0;
+  overflow: hidden;
+  align-self: center;
+  padding: 0 12px;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pdf-file-trigger {
+  display: inline-flex;
+  min-width: 112px;
+  align-items: center;
+  justify-content: center;
+  border-left: 1px solid var(--input-border);
+  border-radius: 0 3px 3px 0;
+  color: #fff;
+  background: var(--blue-600);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.pdf-file-picker label:hover .pdf-file-trigger {
+  filter: brightness(1.08);
 }
 
 .pdf-upload-fields small {
