@@ -56,6 +56,15 @@
     addWiSave: document.getElementById("add-wi-save"),
     addWiCancel: document.getElementById("add-wi-cancel"),
     addWiClose: document.getElementById("add-wi-close"),
+    assignmentEditor: document.getElementById("assignment-editor-modal"),
+    assignmentForm: document.getElementById("assignment-editor-form"),
+    assignmentDocument: document.getElementById("assignment-editor-document"),
+    assignmentLines: [...document.querySelectorAll('#assignment-editor-form input[name="line"]')],
+    assignmentCondition: document.getElementById("assignment-condition-input"),
+    assignmentStatus: document.getElementById("assignment-editor-status"),
+    assignmentSave: document.getElementById("assignment-editor-save"),
+    assignmentCancel: document.getElementById("assignment-editor-cancel"),
+    assignmentClose: document.getElementById("assignment-editor-close"),
     aspBlockageSearch: document.getElementById("asp-blockage-search"),
     aspTurnbackSearch: document.getElementById("asp-turnback-search"),
     aspShuttleSearch: document.getElementById("asp-shuttle-search"),
@@ -93,11 +102,14 @@
     linkEditorReturnFocus: null,
     activePdfDocument: null,
     pdfUploaderReturnFocus: null,
+    activeAssignmentDocument: null,
+    assignmentEditorReturnFocus: null,
     isEditing: false,
     quickAdd: null,
   };
   const linkOverrides = new Map();
   const wiPdfs = new Map();
+  const assignmentOverrides = new Map();
 
   const uniqueValues = (key) =>
     [...new Set(documents.map((document) => document[key]).filter(Boolean))];
@@ -547,11 +559,120 @@
     row.append(reference);
     row.append(createWiPdfCell(entry));
     row.append(createCell(entry.line, "line-cell"));
-    row.append(
-      createCell(entry.condition, `condition-cell is-${entry.condition.toLocaleLowerCase()}`),
-    );
+    const conditionCell = document.createElement("td");
+    conditionCell.className = `condition-cell is-${entry.condition.toLocaleLowerCase()}`;
+    const assignmentEntry = document.createElement("div");
+    assignmentEntry.className = "assignment-entry";
+    const conditionText = document.createElement("span");
+    conditionText.textContent = entry.condition;
+    assignmentEntry.append(conditionText);
+    if (state.isEditing) {
+      const editAssignment = document.createElement("button");
+      editAssignment.type = "button";
+      editAssignment.className = "assignment-edit-button";
+      editAssignment.textContent = "Edit";
+      editAssignment.setAttribute("aria-label", `Edit line and condition for ${entry.reference}`);
+      editAssignment.addEventListener("click", () =>
+        openAssignmentEditor(entry, editAssignment),
+      );
+      assignmentEntry.append(editAssignment);
+    }
+    conditionCell.append(assignmentEntry);
+    row.append(conditionCell);
     row.append(createCell(entry.folder, "folder-cell", entry.folder));
     return row;
+  }
+
+  function setAssignmentStatus(message, isError = false) {
+    elements.assignmentStatus.textContent = message;
+    elements.assignmentStatus.classList.toggle("is-error", isError);
+  }
+
+  function openAssignmentEditor(entry, returnFocus) {
+    if (!state.isEditing) return;
+    state.activeAssignmentDocument = entry;
+    state.assignmentEditorReturnFocus = returnFocus;
+    elements.assignmentDocument.textContent = `${entry.reference} — ${entry.title}`;
+    const selectedLines = new Set(
+      entry.line
+        .split(",")
+        .map((line) => line.trim())
+        .filter(Boolean),
+    );
+    elements.assignmentLines.forEach((input) => {
+      input.checked = selectedLines.has(input.value);
+    });
+    elements.assignmentCondition.value = entry.condition;
+    setAssignmentStatus("");
+    elements.assignmentEditor.hidden = false;
+    (elements.assignmentLines.find((input) => input.checked) || elements.assignmentLines[0]).focus();
+  }
+
+  function closeAssignmentEditor({ restoreFocus = true } = {}) {
+    elements.assignmentEditor.hidden = true;
+    elements.assignmentForm.reset();
+    setAssignmentStatus("");
+    state.activeAssignmentDocument = null;
+    if (restoreFocus && state.assignmentEditorReturnFocus?.isConnected) {
+      state.assignmentEditorReturnFocus.focus();
+    }
+    state.assignmentEditorReturnFocus = null;
+  }
+
+  async function saveDocumentAssignment(event) {
+    event.preventDefault();
+    const entry = state.activeAssignmentDocument;
+    if (!entry) return;
+
+    const line = elements.assignmentLines
+      .filter((input) => input.checked)
+      .map((input) => input.value)
+      .join(",");
+    const condition = elements.assignmentCondition.value;
+    if (!line) {
+      setAssignmentStatus("Choose at least one line.", true);
+      elements.assignmentLines[0].focus();
+      return;
+    }
+
+    elements.assignmentSave.disabled = true;
+    setAssignmentStatus("Saving for all devices…");
+    const id = documentKey(entry);
+    try {
+      const response = await fetch(documentsApi, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ id, line, condition }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (response.status === 401) setEditMode(false);
+        throw new Error(payload.error || "The line and condition could not be saved.");
+      }
+
+      assignmentOverrides.set(id, payload.override);
+      documents = orderedDocuments(
+        documents.map((document) =>
+          documentKey(document) === id
+            ? { ...document, line: payload.override.line, condition: payload.override.condition }
+            : document,
+        ),
+      );
+      closeAssignmentEditor({ restoreFocus: false });
+      refreshDocumentOptions();
+      render();
+      document
+        .querySelector(
+          `.document-row[data-document-key="${CSS.escape(id)}"] .assignment-edit-button`,
+        )
+        ?.focus();
+    } catch (error) {
+      if (!elements.assignmentEditor.hidden) {
+        setAssignmentStatus(error.message || "The line and condition could not be saved.", true);
+      }
+    } finally {
+      elements.assignmentSave.disabled = false;
+    }
   }
 
   function setLinkStatus(message, isError = false) {
@@ -783,6 +904,7 @@
     if (!isEditing) {
       state.quickAdd = null;
       if (!elements.linkEditor.hidden) closeLinkEditor({ restoreFocus: false });
+      if (!elements.assignmentEditor.hidden) closeAssignmentEditor({ restoreFocus: false });
       if (!elements.pdfUploader.hidden) closePdfUploader({ restoreFocus: false });
       if (!elements.addWiModal.hidden) closeAddWi({ restoreFocus: false });
     }
@@ -955,6 +1077,16 @@
       const payload = await response.json();
       const removedIds = new Set(Array.isArray(payload.removedIds) ? payload.removedIds : []);
       const customDocuments = Array.isArray(payload.documents) ? payload.documents : [];
+      assignmentOverrides.clear();
+      for (const override of payload.assignmentOverrides || []) {
+        if (
+          override?.id &&
+          typeof override.line === "string" &&
+          typeof override.condition === "string"
+        ) {
+          assignmentOverrides.set(override.id, override);
+        }
+      }
       const maxRow = Math.max(0, ...baseDocuments.map((document) => Number(document.row) || 0));
       const maxSerial = Math.max(0, ...baseDocuments.map((document) => Number(document.serial) || 0));
       const custom = customDocuments.map((document, index) => ({
@@ -972,10 +1104,17 @@
         createdAt: document.createdAt,
         isCustom: true,
       }));
-      documents = orderedDocuments([
-        ...baseDocuments.filter((document) => !removedIds.has(documentKey(document))),
-        ...custom,
-      ]);
+      documents = orderedDocuments(
+        [
+          ...baseDocuments.filter((document) => !removedIds.has(documentKey(document))),
+          ...custom,
+        ].map((document) => {
+          const override = assignmentOverrides.get(documentKey(document));
+          return override
+            ? { ...document, line: override.line, condition: override.condition }
+            : document;
+        }),
+      );
       refreshDocumentOptions();
       render();
     } catch {
@@ -1223,6 +1362,12 @@
   elements.linkEditor.addEventListener("click", (event) => {
     if (event.target === elements.linkEditor) closeLinkEditor();
   });
+  elements.assignmentForm.addEventListener("submit", saveDocumentAssignment);
+  elements.assignmentCancel.addEventListener("click", () => closeAssignmentEditor());
+  elements.assignmentClose.addEventListener("click", () => closeAssignmentEditor());
+  elements.assignmentEditor.addEventListener("click", (event) => {
+    if (event.target === elements.assignmentEditor) closeAssignmentEditor();
+  });
   elements.pdfForm.addEventListener("submit", uploadWiPdf);
   elements.pdfFile.addEventListener("change", updatePdfFileName);
   elements.pdfCancel.addEventListener("click", () => closePdfUploader());
@@ -1332,6 +1477,11 @@
 
     if (event.key === "Escape" && !elements.pdfUploader.hidden) {
       closePdfUploader();
+      return;
+    }
+
+    if (event.key === "Escape" && !elements.assignmentEditor.hidden) {
+      closeAssignmentEditor();
       return;
     }
 

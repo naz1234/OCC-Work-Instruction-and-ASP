@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createSessionToken } from "../functions/_shared/edit-auth.js";
-import { onRequest, validateDocument } from "../functions/api/documents.js";
+import {
+  onRequest,
+  validateDocument,
+  validateDocumentAssignment,
+} from "../functions/api/documents.js";
 
 const editPassword = "test-edit-password";
 
@@ -11,6 +15,7 @@ class FakeDatabase {
     this.custom = new Map();
     this.removed = new Map();
     this.pdfs = new Map();
+    this.assignments = new Map();
   }
 
   prepare(sql) {
@@ -32,6 +37,9 @@ class FakeDatabase {
         }
         if (sql.includes("FROM removed_documents")) {
           return { results: [...database.removed.keys()].sort().map((id) => ({ id })) };
+        }
+        if (sql.includes("FROM document_overrides")) {
+          return { results: [...database.assignments.values()].sort((a, b) => a.id.localeCompare(b.id)) };
         }
         return { results: [] };
       },
@@ -59,8 +67,13 @@ class FakeDatabase {
           database.custom.delete(this.values[0]);
         } else if (sql.includes("INSERT INTO removed_documents")) {
           database.removed.set(this.values[0], this.values[1]);
+        } else if (sql.includes("INSERT INTO document_overrides")) {
+          const [id, line, condition, updatedAt] = this.values;
+          database.assignments.set(id, { id, line, condition, updatedAt });
         } else if (sql.includes("DELETE FROM wi_pdfs")) {
           database.pdfs.delete(this.values[0]);
+        } else if (sql.includes("DELETE FROM document_overrides")) {
+          database.assignments.delete(this.values[0]);
         }
         return { success: true };
       },
@@ -94,6 +107,21 @@ test("validates a new work instruction and its hyperlink", () => {
   assert.deepEqual(validateDocument(exampleDocument).value, exampleDocument);
   assert.match(validateDocument({ ...exampleDocument, url: "javascript:alert(1)" }).error, /http/);
   assert.match(validateDocument({ ...exampleDocument, title: "" }).error, /title/);
+});
+
+test("validates and normalizes editable lines and conditions", () => {
+  assert.deepEqual(
+    validateDocumentAssignment({ id: "row-7", line: "6,4,4,3", condition: "Emergency" }).value,
+    { id: "row-7", line: "3,4,6", condition: "Emergency" },
+  );
+  assert.match(
+    validateDocumentAssignment({ id: "row-7", line: "2,3", condition: "Normal" }).error,
+    /3, 4, 5, and 6/,
+  );
+  assert.match(
+    validateDocumentAssignment({ id: "row-7", line: "3", condition: "Unknown" }).error,
+    /valid condition/,
+  );
 });
 
 test("adds, lists, and removes a custom work instruction", async () => {
@@ -140,6 +168,27 @@ test("records a removed built-in work instruction for every device", async () =>
   assert.equal(database.removed.has("row-7"), true);
 });
 
+test("updates and lists a built-in work instruction line and condition", async () => {
+  const database = new FakeDatabase();
+  const update = await onRequest({
+    env: { OCC_LINKS: database, EDIT_PASSWORD: editPassword },
+    request: await authorizedRequest("https://example.com/api/documents", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: "row-7", line: "6,4", condition: "Degraded" }),
+    }),
+  });
+  assert.equal(update.status, 200);
+  assert.deepEqual((await update.json()).override.line, "4,6");
+
+  const list = await onRequest({
+    env: { OCC_LINKS: database, EDIT_PASSWORD: editPassword },
+    request: new Request("https://example.com/api/documents"),
+  });
+  const payload = await list.json();
+  assert.equal(payload.assignmentOverrides[0].condition, "Degraded");
+});
+
 test("rejects document changes outside edit mode", async () => {
   const response = await onRequest({
     env: { OCC_LINKS: new FakeDatabase(), EDIT_PASSWORD: editPassword },
@@ -151,4 +200,14 @@ test("rejects document changes outside edit mode", async () => {
   });
   assert.equal(response.status, 401);
   assert.match((await response.json()).error, /Unlock edit mode/);
+
+  const assignmentResponse = await onRequest({
+    env: { OCC_LINKS: new FakeDatabase(), EDIT_PASSWORD: editPassword },
+    request: new Request("https://example.com/api/documents", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: "row-7", line: "3", condition: "Normal" }),
+    }),
+  });
+  assert.equal(assignmentResponse.status, 401);
 });
